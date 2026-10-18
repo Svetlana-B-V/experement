@@ -1,0 +1,2554 @@
+<!DOCTYPE html>
+<html lang="ru" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraTask — Многослойный Сезонный Планер & Авторизация</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'Georgia', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Иконки и шрифты -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --sky-top: #1e293b;
+            --sky-mid: #c26d53;
+            --sky-bot: #f6bd60;
+            --sun-color: #fde047;
+            --mtn-far: #4a4e69;
+            --mtn-mid: #3c415c;
+            --mtn-near: #2b2d42;
+            --tree-accent: #f77f00;
+            --tree-secondary: #d62828;
+            --lake-top: #3d5a80;
+            --lake-bot: #1d3557;
+            --accent-primary: #e07a5f;
+            --accent-secondary: #3d405b;
+            --card-surface: rgba(255, 250, 245, 0.85);
+            --card-border: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Сезонные цветовые палитры */
+        body[data-season="autumn"] {
+            --sky-top: #1d263b;
+            --sky-mid: #b56576;
+            --sky-bot: #f4a261;
+            --sun-color: #ffdd99;
+            --mtn-far: #5c5470;
+            --mtn-mid: #433d58;
+            --mtn-near: #2a2438;
+            --tree-accent: #f77f00;
+            --tree-secondary: #e63946;
+            --lake-top: #355070;
+            --lake-bot: #1d2d44;
+            --accent-primary: #e07a5f;
+            --accent-secondary: #3d405b;
+        }
+
+        body[data-season="spring"] {
+            --sky-top: #3a7ca5;
+            --sky-mid: #81c3d7;
+            --sky-bot: #fcefb4;
+            --sun-color: #fff3b0;
+            --mtn-far: #6b9080;
+            --mtn-mid: #4a7c59;
+            --mtn-near: #2f5241;
+            --tree-accent: #ff9ebb;
+            --tree-secondary: #52b788;
+            --lake-top: #489fb5;
+            --lake-bot: #16697a;
+            --accent-primary: #40916c;
+            --accent-secondary: #2d6a4f;
+        }
+
+        body[data-season="summer"] {
+            --sky-top: #e05745;
+            --sky-mid: #f4845f;
+            --sky-bot: #f7b267;
+            --sun-color: #fff8d6;
+            --mtn-far: #72515b;
+            --mtn-mid: #4e3d42;
+            --mtn-near: #263c41;
+            --tree-accent: #2a9d8f;
+            --tree-secondary: #e76f51;
+            --lake-top: #3a6b7e;
+            --lake-bot: #1d3540;
+            --accent-primary: #e76f51;
+            --accent-secondary: #264653;
+        }
+
+        body[data-season="winter"] {
+            --sky-top: #0f172a;
+            --sky-mid: #334155;
+            --sky-bot: #94a3b8;
+            --sun-color: #f8fafc;
+            --mtn-far: #64748b;
+            --mtn-mid: #475569;
+            --mtn-near: #1e293b;
+            --tree-accent: #38bdf8;
+            --tree-secondary: #818cf8;
+            --lake-top: #334155;
+            --lake-bot: #0f172a;
+            --accent-primary: #4f46e5;
+            --accent-secondary: #1e293b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #1e293b;
+            overflow-x: hidden;
+            background-color: var(--sky-top);
+            transition: background-color 0.8s ease;
+        }
+
+        /* Многослойный параллакс-фон */
+        .parallax-viewport {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+            background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 52%, var(--sky-bot) 78%, var(--lake-bot) 100%);
+            transition: background 1s ease;
+        }
+
+        .parallax-layer {
+            position: absolute;
+            inset: -30px;
+            transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+            will-change: transform;
+        }
+
+        /* Анимация стаи птиц */
+        @keyframes flyAcross {
+            0% { transform: translateX(-15vw) translateY(2vh) scale(0.85); opacity: 0; }
+            10% { opacity: 0.85; }
+            50% { transform: translateX(45vw) translateY(-3vh) scale(1); opacity: 0.9; }
+            90% { opacity: 0.85; }
+            100% { transform: translateX(115vw) translateY(-6vh) scale(0.8); opacity: 0; }
+        }
+
+        @keyframes wingFlap {
+            0%, 100% { transform: scaleY(1); }
+            50% { transform: scaleY(0.55); }
+        }
+
+        .bird-flock {
+            animation: flyAcross 28s linear infinite;
+        }
+        .bird-flock-delayed {
+            animation: flyAcross 34s linear infinite 12s;
+        }
+
+        /* Водная рябь озера */
+        @keyframes waterShimmer {
+            0%, 100% { transform: scaleX(1) translateX(0); opacity: 0.55; }
+            50% { transform: scaleX(1.06) translateX(8px); opacity: 0.8; }
+        }
+        .water-reflection {
+            animation: waterShimmer 5s ease-in-out infinite;
+        }
+
+        /* Стеклянные панели */
+        .glass-panel {
+            background: rgba(255, 252, 248, 0.86);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.65);
+            box-shadow: 
+                0 20px 45px -15px rgba(15, 23, 42, 0.22),
+                inset 0 1px 1px rgba(255, 255, 255, 0.9);
+        }
+
+        /* Стеклянная карточка авторизации как на референсе 1 */
+        .auth-glass-card {
+            background: rgba(30, 41, 59, 0.32);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            border: 1.5px solid rgba(255, 255, 255, 0.38);
+            box-shadow: 
+                0 30px 60px -12px rgba(0, 0, 0, 0.55),
+                0 0 25px rgba(255, 255, 255, 0.08),
+                inset 0 1px 2px rgba(255, 255, 255, 0.45);
+        }
+
+        /* Минималистичные поля ввода с нижней линией (как на референсе) */
+        .auth-underline-input {
+            background: transparent;
+            border: none;
+            border-bottom: 1.5px solid rgba(255, 255, 255, 0.65);
+            color: #ffffff;
+            transition: all 0.3s ease;
+        }
+        .auth-underline-input:focus {
+            outline: none;
+            border-bottom-color: #60a5fa;
+            box-shadow: 0 4px 12px -4px rgba(96, 165, 250, 0.6);
+        }
+        .auth-underline-input::placeholder {
+            color: rgba(255, 255, 255, 0.65);
+        }
+
+        /* Многослойные карточки-диорамы (как на референсах 2 и 3) */
+        .scenic-stat-card {
+            position: relative;
+            background: linear-gradient(180deg, rgba(255, 250, 244, 0.95) 0%, rgba(255, 255, 255, 0.92) 100%);
+            border-radius: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.85);
+            box-shadow: 
+                0 18px 35px -10px rgba(15, 23, 42, 0.18),
+                0 4px 10px -2px rgba(15, 23, 42, 0.06),
+                inset 0 2px 3px rgba(255, 255, 255, 1);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            overflow: hidden;
+        }
+        .scenic-stat-card:hover {
+            transform: translateY(-8px) scale(1.015);
+            box-shadow: 
+                0 28px 50px -12px rgba(15, 23, 42, 0.28),
+                inset 0 2px 4px rgba(255, 255, 255, 1);
+        }
+
+        /* Внутренняя 3D-рамка диорамы (как на референсе 2 с цветами и бабочкой) */
+        .diorama-viewport {
+            position: relative;
+            height: 138px;
+            margin: 10px 10px 0 10px;
+            border-radius: 22px;
+            overflow: hidden;
+            box-shadow: 
+                inset 0 6px 14px rgba(0, 0, 0, 0.22),
+                0 6px 15px -4px rgba(0, 0, 0, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+        }
+
+        /* Тактильные 3D-кружки (сферы) из референса 2 */
+        .tactile-orb {
+            width: 34px;
+            height: 34px;
+            border-radius: 9999px;
+            box-shadow: 
+                0 6px 12px -2px rgba(0, 0, 0, 0.22),
+                inset 0 3px 5px rgba(255, 255, 255, 0.65),
+                inset 0 -3px 6px rgba(0, 0, 0, 0.2);
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+        }
+        .tactile-orb:hover {
+            transform: translateY(-4px) scale(1.12);
+        }
+
+        /* Тактильные 3D овальные кнопки из референса 3 */
+        .pill-3d-btn {
+            position: relative;
+            border-radius: 9999px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            box-shadow: 
+                0 8px 18px -4px rgba(0, 0, 0, 0.25),
+                inset 0 2px 3px rgba(255, 255, 255, 0.7),
+                inset 0 -2px 4px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            overflow: hidden;
+        }
+        .pill-3d-btn:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 
+                0 12px 24px -4px rgba(0, 0, 0, 0.32),
+                inset 0 2px 4px rgba(255, 255, 255, 0.85);
+        }
+        .pill-3d-btn:active {
+            transform: translateY(1px) scale(0.98);
+        }
+
+        /* Поля ввода планера */
+        .glass-input {
+            background: rgba(255, 255, 255, 0.88);
+            border: 1px solid rgba(203, 213, 225, 0.85);
+            box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.03);
+            transition: all 0.25s ease;
+        }
+        .glass-input:focus {
+            border-color: #e07a5f;
+            box-shadow: 0 0 0 3px rgba(224, 122, 95, 0.2);
+            background: #ffffff;
+            outline: none;
+        }
+
+        /* Карточки задач с эффектом глубины */
+        .task-card-3d {
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(241, 245, 249, 0.9);
+            box-shadow: 
+                0 8px 20px -6px rgba(15, 23, 42, 0.07),
+                inset 0 1px 1px rgba(255, 255, 255, 1);
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .task-card-3d:hover {
+            transform: translateY(-2px) translateX(2px);
+            box-shadow: 0 14px 26px -8px rgba(15, 23, 42, 0.13);
+        }
+
+        #particleCanvas {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .hidden-el { display: none !important; }
+
+        /* Кот-ассистент */
+        #catAssistantContainer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            z-index: 90;
+            display: flex;
+            align-items: flex-end;
+            pointer-events: none;
+            will-change: transform;
+        }
+        #catThoughtBubble {
+            pointer-events: auto;
+            background: rgba(255, 252, 248, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1.5px solid rgba(224, 122, 95, 0.35);
+            box-shadow: 0 12px 28px -5px rgba(15, 23, 42, 0.22);
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 260px;
+            font-size: 11.5px;
+            color: #1e293b;
+            margin-bottom: 85px;
+            margin-right: -25px;
+            position: relative;
+            animation: bubbleFloat 3s ease-in-out infinite;
+        }
+        #catThoughtBubble::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            right: 28px;
+            width: 11px;
+            height: 11px;
+            background: rgba(255, 252, 248, 0.95);
+            border-right: 1.5px solid rgba(224, 122, 95, 0.35);
+            border-bottom: 1.5px solid rgba(224, 122, 95, 0.35);
+            transform: rotate(45deg);
+        }
+        #catSpriteWrapper {
+            pointer-events: auto;
+            cursor: pointer;
+            transition: transform 0.25s ease;
+        }
+        #catSpriteWrapper:hover {
+            filter: drop-shadow(0 6px 12px rgba(224, 122, 95, 0.4));
+        }
+
+        @keyframes bubbleFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        @keyframes catLegsWalk {
+            0%, 100% { transform: rotate(-14deg); }
+            50% { transform: rotate(14deg); }
+        }
+        @keyframes catLegsWalkOpp {
+            0%, 100% { transform: rotate(14deg); }
+            50% { transform: rotate(-14deg); }
+        }
+        @keyframes tailWag {
+            0%, 100% { transform: rotate(-8deg); }
+            50% { transform: rotate(12deg); }
+        }
+        .cat-walking .leg-1 { animation: catLegsWalk 0.35s infinite ease-in-out; transform-origin: top center; }
+        .cat-walking .leg-2 { animation: catLegsWalkOpp 0.35s infinite ease-in-out; transform-origin: top center; }
+        .cat-tail { animation: tailWag 1.4s infinite ease-in-out; transform-origin: bottom right; }
+
+        /* Кастомный скроллбар */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(241, 245, 249, 0.4); }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body data-season="autumn" class="min-h-screen relative flex flex-col justify-between selection:bg-orange-500 selection:text-white">
+
+    <!-- =========================================================================
+         1. МНОГОСЛОЙНЫЙ ПАРАЛЛАКС-ФОН (ГОРЫ, ЛЕС, ПТИЦЫ, СОЛНЦЕ И ОЗЕРО С ОТРАЖЕНИЕМ)
+         ========================================================================= -->
+    <div id="parallaxViewport" class="parallax-viewport">
+        <!-- Слой 1: Звезды, Солнце/Луна и Облака -->
+        <div class="parallax-layer" data-depth="0.02">
+            <svg class="w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                    <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="var(--sun-color)" stop-opacity="0.95"/>
+                        <stop offset="45%" stop-color="var(--sun-color)" stop-opacity="0.35"/>
+                        <stop offset="100%" stop-color="var(--sun-color)" stop-opacity="0"/>
+                    </radialGradient>
+                </defs>
+                <!-- Мерцающие звезды в верхней части неба -->
+                <g fill="#ffffff" opacity="0.55">
+                    <circle cx="180" cy="80" r="1.5"/><circle cx="340" cy="120" r="1"/><circle cx="520" cy="60" r="2"/>
+                    <circle cx="780" cy="95" r="1.2"/><circle cx="960" cy="50" r="1.8"/><circle cx="1180" cy="110" r="1.4"/>
+                    <circle cx="1310" cy="70" r="2"/><circle cx="90" cy="160" r="1.2"/><circle cx="660" cy="140" r="1.5"/>
+                </g>
+                <!-- Светило с ореолом -->
+                <circle id="celestialGlow" cx="720" cy="340" r="220" fill="url(#sunGlow)"/>
+                <circle id="celestialBody" cx="720" cy="340" r="68" fill="var(--sun-color)" opacity="0.92"/>
+                <!-- Слоистые облака как на референсе 1 -->
+                <g fill="#ffffff" opacity="0.65">
+                    <path d="M160,210 Q190,195 220,208 Q250,198 280,210 Z"/>
+                    <path d="M920,175 Q965,158 1010,172 Q1045,162 1085,175 Z"/>
+                    <path d="M1140,235 Q1180,220 1220,232 Q1255,222 1295,235 Z"/>
+                    <path d="M310,250 Q350,238 390,248 Q420,240 455,250 Z"/>
+                </g>
+            </svg>
+        </div>
+
+        <!-- Слой 2: Дальние горные хребты и анимированные стаи птиц -->
+        <div class="parallax-layer" data-depth="0.045">
+            <svg class="w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+                <!-- Дальние горы -->
+                <path d="M-50,620 L140,360 L340,510 L560,330 L760,500 L990,340 L1210,480 L1360,350 L1490,520 L1490,900 L-50,900 Z" fill="var(--mtn-far)" opacity="0.78"/>
+                
+                <!-- Анимированная стая птиц 1 -->
+                <g class="bird-flock" stroke="#2b2d42" stroke-width="2.4" fill="none" stroke-linecap="round">
+                    <path d="M220,260 Q228,250 236,258 Q244,250 252,260"/>
+                    <path d="M255,245 Q261,237 267,243 Q273,237 279,245"/>
+                    <path d="M200,275 Q206,267 212,273 Q218,267 224,275"/>
+                    <path d="M280,265 Q285,259 290,264 Q295,259 300,265"/>
+                </g>
+                <!-- Анимированная стая птиц 2 -->
+                <g class="bird-flock-delayed" stroke="#2b2d42" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.7">
+                    <path d="M120,190 Q127,182 134,188 Q141,182 148,190"/>
+                    <path d="M152,178 Q157,172 162,177 Q167,172 172,178"/>
+                </g>
+            </svg>
+        </div>
+
+        <!-- Слой 3: Средние горы и силуэты хвойного леса -->
+        <div class="parallax-layer" data-depth="0.075">
+            <svg class="w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+                <!-- Средний хребет -->
+                <path d="M-50,650 L90,460 L270,560 L470,410 L690,580 L890,430 L1120,560 L1320,420 L1490,570 L1490,900 L-50,900 Z" fill="var(--mtn-mid)" opacity="0.9"/>
+                <!-- Силуэты дальних сосен -->
+                <g fill="var(--mtn-near)" opacity="0.75">
+                    <polygon points="350,530 338,595 362,595"/>
+                    <polygon points="372,515 358,595 386,595"/>
+                    <polygon points="395,540 383,595 407,595"/>
+                    <polygon points="1020,520 1006,595 1034,595"/>
+                    <polygon points="1045,500 1030,595 1060,595"/>
+                    <polygon points="1070,530 1058,595 1082,595"/>
+                </g>
+            </svg>
+        </div>
+
+        <!-- Слой 4: Передний план — яркие сезонные ели, деревья, берег и зеркальное озеро (как на референсе 1) -->
+        <div class="parallax-layer" data-depth="0.11">
+            <svg class="w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                    <linearGradient id="lakeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="var(--lake-top)"/>
+                        <stop offset="100%" stop-color="var(--lake-bot)"/>
+                    </linearGradient>
+                    <linearGradient id="pineGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="var(--tree-accent)"/>
+                        <stop offset="100%" stop-color="var(--tree-secondary)"/>
+                    </linearGradient>
+                </defs>
+
+                <!-- Ближние холмы по краям -->
+                <path d="M-60,640 Q180,550 420,645 L-60,660 Z" fill="var(--mtn-near)"/>
+                <path d="M1020,645 Q1260,550 1500,640 L1500,660 Z" fill="var(--mtn-near)"/>
+
+                <!-- Левая группа ярких сезонных деревьев (как на референсе 1) -->
+                <g>
+                    <!-- Высокие золотисто-оранжевые/сезонные ели слева -->
+                    <polygon points="85,390 55,610 115,610" fill="url(#pineGrad)"/>
+                    <polygon points="135,345 100,615 170,615" fill="url(#pineGrad)"/>
+                    <polygon points="185,410 155,615 215,615" fill="url(#pineGrad)"/>
+                    <polygon points="235,380 205,615 265,615" fill="url(#pineGrad)"/>
+                    <polygon points="278,440 255,615 301,615" fill="url(#pineGrad)"/>
+                    <!-- Округлые кроны деревьев на переднем плане -->
+                    <ellipse cx="65" cy="575" rx="34" ry="45" fill="var(--mtn-mid)"/>
+                    <ellipse cx="120" cy="585" rx="30" ry="38" fill="var(--tree-secondary)" opacity="0.85"/>
+                    <ellipse cx="175" cy="570" rx="38" ry="48" fill="var(--mtn-near)"/>
+                    <ellipse cx="235" cy="580" rx="32" ry="42" fill="var(--tree-secondary)" opacity="0.9"/>
+                    <ellipse cx="290" cy="590" rx="28" ry="36" fill="var(--mtn-mid)"/>
+                    <!-- Прибрежные валуны слева -->
+                    <path d="M-20,645 Q40,605 110,645 Z" fill="#1e293b"/>
+                    <path d="M90,645 Q175,595 260,645 Z" fill="#334155"/>
+                    <path d="M230,645 Q285,615 340,645 Z" fill="#1e293b"/>
+                </g>
+
+                <!-- Правая группа ярких сезонных деревьев -->
+                <g>
+                    <polygon points="1355,390 1325,610 1385,610" fill="url(#pineGrad)"/>
+                    <polygon points="1305,345 1270,615 1340,615" fill="url(#pineGrad)"/>
+                    <polygon points="1255,410 1225,615 1285,615" fill="url(#pineGrad)"/>
+                    <polygon points="1205,380 1175,615 1235,615" fill="url(#pineGrad)"/>
+                    <polygon points="1162,440 1139,615 1185,615" fill="url(#pineGrad)"/>
+                    <!-- Округлые кроны справа -->
+                    <ellipse cx="1375" cy="575" rx="34" ry="45" fill="var(--mtn-mid)"/>
+                    <ellipse cx="1320" cy="585" rx="30" ry="38" fill="var(--tree-secondary)" opacity="0.85"/>
+                    <ellipse cx="1265" cy="570" rx="38" ry="48" fill="var(--mtn-near)"/>
+                    <ellipse cx="1205" cy="580" rx="32" ry="42" fill="var(--tree-secondary)" opacity="0.9"/>
+                    <ellipse cx="1150" cy="590" rx="28" ry="36" fill="var(--mtn-mid)"/>
+                    <!-- Прибрежные валуны справа -->
+                    <path d="M1460,645 Q1400,605 1330,645 Z" fill="#1e293b"/>
+                    <path d="M1350,645 Q1265,595 1180,645 Z" fill="#334155"/>
+                    <path d="M1210,645 Q1155,615 1100,645 Z" fill="#1e293b"/>
+                </g>
+
+                <!-- Зеркальная гладь озера (нижняя треть экрана) -->
+                <rect x="0" y="642" width="1440" height="260" fill="url(#lakeGrad)" opacity="0.94"/>
+                <line x1="0" y1="642" x2="1440" y2="642" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
+
+                <!-- Отражения деревьев и солнца в воде -->
+                <g class="water-reflection" opacity="0.35">
+                    <ellipse cx="170" cy="700" rx="120" ry="18" fill="var(--tree-accent)"/>
+                    <ellipse cx="1270" cy="700" rx="120" ry="18" fill="var(--tree-accent)"/>
+                    <ellipse cx="720" cy="685" rx="95" ry="10" fill="var(--sun-color)"/>
+                    <rect x="640" y="710" width="160" height="4" rx="2" fill="var(--sun-color)"/>
+                    <rect x="670" y="730" width="100" height="3" rx="1.5" fill="var(--sun-color)"/>
+                    <rect x="200" y="745" width="220" height="2.5" rx="1" fill="#ffffff"/>
+                    <rect x="1020" y="755" width="220" height="2.5" rx="1" fill="#ffffff"/>
+                </g>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Слой 5: Холст интерактивных сезонных частиц -->
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- Уведомления (Тосты вместо alert) -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-[100] flex flex-col gap-2.5 pointer-events-none"></div>
+
+    <!-- =========================================================================
+         2. ГЛАВНАЯ НАВИГАЦИОННАЯ ПАНЕЛЬ (ОБЩАЯ ДЛЯ АВТОРИЗАЦИИ И ПЛАНЕРА)
+         ========================================================================= -->
+    <div class="relative z-20 container mx-auto px-4 pt-5 max-w-7xl">
+        <header class="flex flex-wrap items-center justify-between gap-3 px-6 py-3.5 rounded-full auth-glass-card text-white">
+            <!-- Логотип -->
+            <div class="flex items-center gap-3 cursor-pointer" onclick="switchAppMode('planner')">
+                <div class="w-10 h-10 rounded-full bg-white/20 border border-white/50 flex items-center justify-center shadow-inner">
+                    <i class="fa-solid fa-mountain-sun text-lg text-amber-300"></i>
+                </div>
+                <div>
+                    <span class="text-lg font-extrabold tracking-wider">AURA<span class="text-amber-300">TASK</span></span>
+                    <span id="seasonBadgeHeader" class="hidden sm:inline-block ml-2 text-[10px] uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-white/15 border border-white/25">Осень</span>
+                </div>
+            </div>
+
+            <!-- Навигационные ссылки (в стиле референса 1) + Переключатель экранов -->
+            <nav class="hidden lg:flex items-center gap-7 text-xs font-medium tracking-wide text-white/90">
+                <button onclick="switchAppMode('auth')" id="navAuthBtn" class="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                    <i class="fa-solid fa-right-to-bracket"></i> Авторизация
+                </button>
+                <button onclick="switchAppMode('planner')" id="navPlannerBtn" class="hover:text-amber-300 transition-colors flex items-center gap-1.5 text-amber-300 font-bold">
+                    <i class="fa-solid fa-compass"></i> Дашборд Планера
+                </button>
+                <button onclick="openDockerModal()" class="hover:text-sky-300 transition-colors flex items-center gap-1.5">
+                    <i class="fa-brands fa-docker text-sky-300"></i> Docker & Node.js БД
+                </button>
+            </nav>
+
+            <!-- Правый блок управления: Сезон, Статус БД, Профиль -->
+            <div class="flex items-center flex-wrap gap-2.5">
+                <!-- Переключатель экранов для мобильных/планшетов -->
+                <button onclick="toggleAppMode()" id="quickSwitchModeBtn" class="px-3.5 py-1.5 rounded-full bg-amber-400/25 hover:bg-amber-400/40 border border-amber-300/50 text-xs font-semibold text-white transition-all flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+                    <span id="quickSwitchModeText">Экран Входа</span>
+                </button>
+
+                <!-- Кнопка Docker / Node.js кода -->
+                <button onclick="openDockerModal()" title="Код сервера Node.js + Docker PostgreSQL" class="px-3 py-1.5 rounded-full bg-sky-500/25 hover:bg-sky-500/40 border border-sky-300/40 text-xs font-semibold text-white transition-all flex items-center gap-1.5">
+                    <i class="fa-brands fa-docker text-sky-300"></i>
+                    <span class="hidden sm:inline">Docker API</span>
+                    <span id="dbStatusDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Синхронизация активна"></span>
+                </button>
+
+                <!-- Выбор времени года -->
+                <select id="seasonSelect" class="bg-white/15 hover:bg-white/25 border border-white/35 text-white text-xs font-semibold rounded-full px-3.5 py-1.5 focus:outline-none cursor-pointer backdrop-blur-md">
+                    <option value="auto" class="text-slate-800">🌿 Авто-сезон</option>
+                    <option value="spring" class="text-slate-800">🌸 Весна (Ручьи)</option>
+                    <option value="summer" class="text-slate-800">☀️ Лето (Лепестки)</option>
+                    <option value="autumn" class="text-slate-800">🍁 Осень (Листопад)</option>
+                    <option value="winter" class="text-slate-800">❄️ Зима (Снегопад)</option>
+                </select>
+
+                <!-- Профиль пользователя -->
+                <div onclick="switchAppMode('auth')" class="flex items-center gap-2 pl-2 pr-3 py-1 rounded-full bg-white/15 hover:bg-white/25 border border-white/30 cursor-pointer transition-all" title="Профиль / Сменить аккаунт">
+                    <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-400 to-rose-500 flex items-center justify-center text-[11px] font-bold text-white shadow">
+                        <span id="userAvatarInitial">А</span>
+                    </div>
+                    <span id="userNameDisplay" class="text-xs font-semibold hidden md:inline">Алексей</span>
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- =========================================================================
+         3. ЭКРАН АВТОРИЗАЦИИ И РЕГИСТРАЦИИ (РЕФЕРЕНСЫ 1 и 3)
+         ========================================================================= -->
+    <section id="authViewSection" class="relative z-20 flex-grow flex items-center justify-center px-4 py-8 hidden-el">
+        <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-12 rounded-[32px] overflow-hidden auth-glass-card">
+            
+            <!-- Левая часть: Пейзажная многослойная карточка-диорама сезона (как на референсе 3) -->
+            <div class="md:col-span-5 relative p-7 flex flex-col justify-between text-center overflow-hidden bg-gradient-to-b from-amber-100/90 via-orange-200/80 to-slate-900/90 text-slate-800 min-h-[340px]">
+                <!-- Фоновая векторная диорама внутри карточки -->
+                <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice">
+                    <defs>
+                        <linearGradient id="authCardSky" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="#fdf4eb"/>
+                            <stop offset="45%" stop-color="#f8c8a8"/>
+                            <stop offset="100%" stop-color="#e07a5f"/>
+                        </linearGradient>
+                    </defs>
+                    <rect width="400" height="600" fill="url(#authCardSky)"/>
+                    <!-- Большое солнце -->
+                    <circle cx="200" cy="255" r="58" fill="#fff7e6" opacity="0.9"/>
+                    <!-- Птицы -->
+                    <g stroke="#4a3b32" stroke-width="2" fill="none" stroke-linecap="round">
+                        <path d="M85,205 Q92,197 99,203 Q106,197 113,205"/>
+                        <path d="M125,190 Q130,184 135,188 Q140,184 145,190"/>
+                        <path d="M275,215 Q282,207 289,213 Q296,207 303,215"/>
+                    </g>
+                    <!-- Слои гор и леса как на вертикальных баннерах референса 3 -->
+                    <path d="M-20,420 L95,290 L215,375 L330,275 L420,380 L420,600 L-20,600 Z" fill="#9e6252" opacity="0.7"/>
+                    <path d="M-20,455 L75,355 L190,415 L295,335 L420,425 L420,600 L-20,600 Z" fill="#5e505b" opacity="0.85"/>
+                    <!-- Озеро в карточке -->
+                    <rect x="0" y="445" width="400" height="80" fill="#a8dadc" opacity="0.65"/>
+                    <!-- Передние холмы и деревья -->
+                    <path d="M-20,515 Q110,460 240,515 Q330,475 420,510 L420,600 L-20,600 Z" fill="#2d4137"/>
+                    <circle cx="60" cy="485" r="32" fill="#e07a5f"/>
+                    <circle cx="335" cy="480" r="36" fill="#f4a261"/>
+                    <circle cx="290" cy="505" r="24" fill="#e76f51"/>
+                    <path d="M-20,545 Q180,500 420,555 L420,600 L-20,600 Z" fill="#1b2a24"/>
+                </svg>
+
+                <!-- Верхний типографический блок в стиле референса 3 -->
+                <div class="relative z-10 pt-2">
+                    <p id="authSeasonTag" class="text-[10px] font-extrabold uppercase tracking-[0.25em] text-stone-700 mb-2">AUTUMN HARMONY &bull; 2026</p>
+                    <h3 id="authArtTitle" class="font-serif italic text-2xl font-bold text-stone-800 leading-snug">Гармония ваших задач</h3>
+                    <p class="text-xs text-stone-700/90 mt-2 leading-relaxed px-2">
+                        Многослойное пространство для проектов, хакатонов и личных целей с синхронизацией в реальном времени.
+                    </p>
+                </div>
+
+                <!-- Нижняя овальная кнопка на пейзаже (как на референсе 3) -->
+                <div class="relative z-10 pt-6 pb-1 flex flex-col items-center">
+                    <button type="button" onclick="quickDemoLogin()" class="pill-3d-btn px-7 py-2.5 bg-[#f6e4d4] hover:bg-white text-stone-800 text-xs uppercase tracking-widest border border-white/80">
+                        Демо-вход в 1 клик
+                    </button>
+                </div>
+            </div>
+
+            <!-- Правая часть: Прозрачная стеклянная форма Sign In / Sign Up (как на референсе 1) -->
+            <div class="md:col-span-7 p-8 sm:p-10 flex flex-col justify-center text-white relative">
+                <div class="max-w-sm mx-auto w-full">
+                    <div class="text-center mb-7">
+                        <h2 id="authFormHeading" class="text-3xl font-bold tracking-tight mb-1.5">Sign Up</h2>
+                        <p class="text-xs text-white/80">
+                            <span id="authTogglePrompt">Уже есть аккаунт?</span>
+                            <button type="button" onclick="toggleAuthType()" id="authToggleBtn" class="text-sky-300 hover:text-sky-200 font-semibold underline ml-1">Войти</button>
+                        </p>
+                    </div>
+
+                    <form id="authForm" class="space-y-5">
+                        <div id="authNameFieldWrap">
+                            <label class="block text-xs font-medium text-white/90 mb-1">Имя пользователя</label>
+                            <input type="text" id="authNameInput" placeholder="Алексей Смирнов" class="auth-underline-input w-full py-2 text-sm">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-white/90 mb-1">Email</label>
+                            <input type="email" id="authEmailInput" required placeholder="alexey@auratask.io" value="alexey@auratask.io" class="auth-underline-input w-full py-2 text-sm">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-white/90 mb-1">Password</label>
+                            <input type="password" id="authPasswordInput" required placeholder="••••••••••••" value="password123" class="auth-underline-input w-full py-2 text-sm">
+                        </div>
+
+                        <!-- Кнопка отправки как на референсе 1 -->
+                        <div class="pt-2">
+                            <button type="submit" id="authSubmitBtn" class="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white font-bold text-sm shadow-lg shadow-blue-500/35 transition-all transform hover:-translate-y-0.5">
+                                Sign Up &rarr; Открыть Планер
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Разделитель "or sign up with" -->
+                    <div class="flex items-center gap-3 my-6">
+                        <div class="h-px bg-white/30 flex-grow"></div>
+                        <span class="text-[11px] text-white/80 font-medium">or sign up with</span>
+                        <div class="h-px bg-white/30 flex-grow"></div>
+                    </div>
+
+                    <!-- Иконки соцсетей -->
+                    <div class="flex items-center justify-center gap-4">
+                        <button type="button" onclick="quickDemoLogin('Google')" class="w-10 h-10 rounded-full bg-white hover:scale-110 transition-transform flex items-center justify-center shadow-md" title="Войти через Google">
+                            <i class="fa-brands fa-google text-rose-500 text-base"></i>
+                        </button>
+                        <button type="button" onclick="quickDemoLogin('Facebook')" class="w-10 h-10 rounded-full bg-[#1877F2] hover:scale-110 transition-transform flex items-center justify-center text-white shadow-md" title="Войти через Facebook">
+                            <i class="fa-brands fa-facebook-f text-base"></i>
+                        </button>
+                        <button type="button" onclick="quickDemoLogin('GitHub')" class="w-10 h-10 rounded-full bg-slate-800 hover:scale-110 transition-transform flex items-center justify-center text-white border border-white/20 shadow-md" title="Войти через GitHub">
+                            <i class="fa-brands fa-github text-base"></i>
+                        </button>
+                    </div>
+
+                    <!-- Подсказка о подключении к Docker Node.js API -->
+                    <div class="mt-6 pt-4 border-t border-white/15 flex items-center justify-between text-[11px] text-white/75">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-database text-emerald-300"></i>
+                            PostgreSQL (Docker) + Node.js API
+                        </span>
+                        <button type="button" onclick="openDockerModal()" class="text-amber-300 hover:underline font-medium">
+                            Настроить БД &rarr;
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================================
+         4. ОСНОВНОЙ ЭКРАН ПЛАНЕРА ЗАДАЧ (В СТИЛЕ МНОГОСЛОЙНЫХ КАРТОЧЕК РЕФЕРЕНСОВ 2 И 3)
+         ========================================================================= -->
+    <main id="plannerViewSection" class="relative z-20 container mx-auto px-4 py-6 max-w-7xl flex-grow flex flex-col">
+
+        <!-- Панель управления планером и выбор проектов -->
+        <div class="glass-panel p-4 sm:p-5 rounded-[28px] mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
+            <!-- Вкладки проектов -->
+            <div class="flex items-center flex-wrap gap-2 w-full lg:w-auto">
+                <span class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mr-1 flex items-center gap-1.5">
+                    <i class="fa-solid fa-layer-group text-orange-500"></i> Проекты:
+                </span>
+                <div id="categoryTabs" class="flex items-center flex-wrap gap-2"></div>
+                
+                <button type="button" onclick="openAddCategoryModal()" title="Новый проект" class="w-8 h-8 rounded-full bg-orange-50 hover:bg-orange-100 text-orange-600 flex items-center justify-center transition-all text-xs font-bold border border-orange-200 shadow-sm hover:scale-105">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+                <button type="button" onclick="confirmDeleteCurrentCategory()" title="Удалить текущий проект" class="w-8 h-8 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition-all text-xs font-bold border border-rose-200 shadow-sm hover:scale-105">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+
+            <!-- Переключатель Задачи / Таймлайн, Поиск, Архив -->
+            <div class="flex items-center flex-wrap gap-2.5 w-full lg:w-auto justify-end">
+                <div class="bg-slate-200/70 p-1 rounded-full flex items-center gap-1">
+                    <button id="tabTasksBtn" onclick="switchTab('tasks')" class="px-4 py-1.5 rounded-full text-xs font-bold bg-slate-800 text-white transition-all shadow">
+                        <i class="fa-solid fa-list-check mr-1"></i> Задачи
+                    </button>
+                    <button id="tabTimelineBtn" onclick="switchTab('timeline')" class="px-4 py-1.5 rounded-full text-xs font-bold text-slate-600 hover:text-slate-900 transition-all">
+                        <i class="fa-solid fa-chart-gantt mr-1"></i> Таймлайн
+                    </button>
+                </div>
+
+                <div class="relative flex-grow sm:flex-grow-0">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-search text-xs"></i>
+                    </span>
+                    <input type="text" id="searchInput" placeholder="Поиск задач..." class="glass-input text-xs rounded-full pl-9 pr-4 py-2 w-full sm:w-44 text-slate-700 placeholder-slate-400">
+                </div>
+
+                <button id="toggleHiddenBtn" onclick="toggleHiddenPanel()" title="Архив скрытых задач" class="glass-input hover:bg-orange-50 hover:text-orange-600 text-slate-600 px-3 py-2 rounded-full transition-all relative text-xs font-semibold flex items-center gap-1.5">
+                    <i class="fa-solid fa-box-archive"></i>
+                    <span id="hiddenCountBadge" class="bg-orange-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold hidden">0</span>
+                </button>
+
+                <button id="clearCompletedBtn" title="Очистить выполненные" class="glass-input hover:bg-rose-50 hover:text-rose-600 text-slate-600 p-2 rounded-full transition-all w-8 h-8 flex items-center justify-center">
+                    <i class="fa-solid fa-broom text-xs"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Выдвижная панель архивных задач -->
+        <div id="hiddenPanel" class="glass-panel p-4 rounded-3xl mb-6 hidden-el border border-orange-200">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-xs font-bold text-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-box-archive text-orange-500"></i> Архивные элементы
+                </h3>
+                <button onclick="toggleHiddenPanel()" class="text-xs text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark"></i> Закрыть</button>
+            </div>
+            <div id="hiddenTasksList" class="space-y-2 max-h-40 overflow-y-auto"></div>
+        </div>
+
+        <!-- =====================================================================
+             МНОГОСЛОЙНЫЕ ДАШБОРД-КАРТОЧКИ С ДИОРАМАМИ И 3D-КНОПКАМИ (РЕФЕРЕНСЫ 2 и 3)
+             ===================================================================== -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
+            
+            <!-- Карточка 1: Всего задач (Изумрудно-золотая ботаническая 3D-диорама как на левом смартфоне референса 2) -->
+            <div onclick="filterByStat('all')" class="scenic-stat-card cursor-pointer flex flex-col justify-between">
+                <div>
+                    <div class="diorama-viewport bg-gradient-to-b from-[#f9dcc4] via-[#d8e2dc] to-[#1b4332]">
+                        <svg class="w-full h-full" viewBox="0 0 300 140" preserveAspectRatio="xMidYMid slice">
+                            <!-- Облачко и птицы -->
+                            <path d="M55,35 Q75,20 95,35 Z" fill="#6b705c" opacity="0.5"/>
+                            <path d="M180,28 Q186,21 192,26 Q198,21 204,28" stroke="#344e41" stroke-width="1.8" fill="none"/>
+                            <!-- Дальние холмы -->
+                            <path d="M0,95 Q80,55 170,90 Q240,60 300,85 L300,140 L0,140 Z" fill="#52796f" opacity="0.6"/>
+                            <path d="M0,110 Q110,75 210,105 Q260,85 300,100 L300,140 L0,140 Z" fill="#354f52"/>
+                            <!-- Пышный золотистый куст и ботаника (как на референсе 2) -->
+                            <ellipse cx="145" cy="118" rx="85" ry="28" fill="#f77f00" opacity="0.85"/>
+                            <ellipse cx="145" cy="122" rx="72" ry="22" fill="#fcbf49"/>
+                            <!-- Листья слева и справа -->
+                            <circle cx="48" cy="95" r="16" fill="#2d6a4f"/>
+                            <circle cx="242" cy="98" r="20" fill="#40916c"/>
+                            <circle cx="225" cy="110" r="14" fill="#52b788"/>
+                        </svg>
+                        <span class="absolute top-2.5 right-3 bg-white/90 text-slate-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow">
+                            ALL TASKS
+                        </span>
+                    </div>
+
+                    <div class="px-5 pt-3.5 pb-2">
+                        <div class="flex items-baseline justify-between">
+                            <div>
+                                <p class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Общий объем</p>
+                                <h4 class="font-serif italic text-lg font-bold text-slate-800">Всего задач</h4>
+                            </div>
+                            <span id="statTotal" class="text-3xl font-extrabold text-emerald-900">0</span>
+                        </div>
+                        <!-- Ряд объемных 3D-кружков как на референсе 2 -->
+                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                            <div class="flex items-center gap-2">
+                                <span class="tactile-orb w-6 h-6 bg-gradient-to-br from-rose-500 to-red-600 inline-block"></span>
+                                <span class="tactile-orb w-6 h-6 bg-gradient-to-br from-orange-400 to-coral-500 inline-block"></span>
+                                <span class="tactile-orb w-6 h-6 bg-gradient-to-br from-amber-300 to-yellow-500 inline-block"></span>
+                                <span class="tactile-orb w-6 h-6 bg-gradient-to-br from-emerald-400 to-teal-500 inline-block"></span>
+                            </div>
+                            <span class="pill-3d-btn px-3.5 py-1 bg-emerald-500 text-white text-[10px] uppercase">Показать</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Карточка 2: В работе (Кораллово-терракотовая 3D-диорама с бабочкой как на правом смартфоне референса 2) -->
+            <div onclick="filterByStat('pending')" class="scenic-stat-card cursor-pointer flex flex-col justify-between">
+                <div>
+                    <div class="diorama-viewport bg-gradient-to-b from-[#ff758f] via-[#ff8fa3] to-[#590d22]">
+                        <svg class="w-full h-full" viewBox="0 0 300 140" preserveAspectRatio="xMidYMid slice">
+                            <!-- Облачко -->
+                            <path d="M195,42 Q220,22 245,42 Z" fill="#fff0f3" opacity="0.75"/>
+                            <!-- Мягкие холмы -->
+                            <path d="M0,95 Q95,55 190,92 Q250,65 300,88 L300,140 L0,140 Z" fill="#a4133c" opacity="0.65"/>
+                            <path d="M0,115 Q80,82 165,110 Q235,88 300,112 L300,140 L0,140 Z" fill="#800f2f"/>
+                            <path d="M20,132 Q140,95 280,132 Z" fill="#590d22"/>
+                            <!-- Силуэт парящей бабочки (как на референсе 2) -->
+                            <g transform="translate(135, 48) rotate(-18)">
+                                <path d="M0,0 C-18,-22 -32,-5 -12,10 C-26,20 -10,30 0,14 C10,30 26,20 12,10 C32,-5 18,-22 0,0 Z" fill="#2b2d42"/>
+                            </g>
+                            <!-- Бирюзовые кустики на переднем плане -->
+                            <circle cx="75" cy="122" r="14" fill="#2ec4b6"/>
+                            <circle cx="220" cy="120" r="16" fill="#2ec4b6"/>
+                        </svg>
+                        <span class="absolute top-2.5 right-3 bg-white/90 text-rose-700 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow">
+                            IN PROGRESS
+                        </span>
+                    </div>
+
+                    <div class="px-5 pt-3.5 pb-2">
+                        <div class="flex items-baseline justify-between">
+                            <div>
+                                <p class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Активный поток</p>
+                                <h4 class="font-serif italic text-lg font-bold text-slate-800">В работе</h4>
+                            </div>
+                            <span id="statPending" class="text-3xl font-extrabold text-rose-600">0</span>
+                        </div>
+                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                            <div class="flex items-center gap-2">
+                                <span class="tactile-orb w-6 h-6 bg-gradient-to-br from-orange-400 to-rose-500 inline-block"></span>
+                                <span class="tactile-orb w-6 h-6 bg-gradient-to-br from-purple-400 to-indigo-600 inline-block"></span>
+                                <span class="tactile-orb w-6 h-6 bg-gradient-to-br from-teal-300 to-emerald-500 inline-block"></span>
+                                <span class="tactile-orb w-6 h-6 bg-gradient-to-br from-pink-400 to-rose-500 inline-block"></span>
+                            </div>
+                            <span class="pill-3d-btn px-3.5 py-1 bg-rose-500 text-white text-[10px] uppercase">Активные</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Карточка 3: Готово (Горное озеро и сосны как на референсе 3) -->
+            <div onclick="filterByStat('completed')" class="scenic-stat-card cursor-pointer flex flex-col justify-between">
+                <div>
+                    <div class="diorama-viewport bg-gradient-to-b from-[#e0fbfc] via-[#98c1d9] to-[#293241]">
+                        <svg class="w-full h-full" viewBox="0 0 300 140" preserveAspectRatio="xMidYMid slice">
+                            <circle cx="215" cy="45" r="24" fill="#ffffff" opacity="0.85"/>
+                            <path d="M90,32 Q96,26 102,31 Q108,26 114,32" stroke="#3d5a80" stroke-width="1.8" fill="none"/>
+                            <path d="M0,90 L75,42 L155,82 L235,38 L300,80 L300,140 L0,140 Z" fill="#3d5a80" opacity="0.75"/>
+                            <rect x="0" y="92" width="300" height="48" fill="#98c1d9" opacity="0.65"/>
+                            <!-- Ряд елей -->
+                            <polygon points="35,62 20,125 50,125" fill="#1d3557"/>
+                            <polygon points="62,75 50,125 74,125" fill="#293241"/>
+                            <polygon points="245,58 228,125 262,125" fill="#1d3557"/>
+                            <polygon points="272,72 258,125 286,125" fill="#293241"/>
+                        </svg>
+                        <span class="absolute top-2.5 right-3 bg-white/90 text-teal-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow">
+                            COMPLETED
+                        </span>
+                    </div>
+
+                    <div class="px-5 pt-3.5 pb-2">
+                        <div class="flex items-baseline justify-between">
+                            <div>
+                                <p class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Завершено</p>
+                                <h4 class="font-serif italic text-lg font-bold text-slate-800">Готово</h4>
+                            </div>
+                            <span id="statCompleted" class="text-3xl font-extrabold text-teal-700">0</span>
+                        </div>
+                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                            <div class="flex items-center gap-2">
+                                <span class="tactile-orb w-6 h-6 bg-gradient-to-br from-teal-400 to-emerald-600 inline-block"></span>
+                                <span class="tactile-orb w-6 h-6 bg-gradient-to-br from-sky-400 to-blue-600 inline-block"></span>
+                                <span class="tactile-orb w-6 h-6 bg-gradient-to-br from-indigo-300 to-indigo-500 inline-block"></span>
+                                <span class="tactile-orb w-6 h-6 bg-gradient-to-br from-amber-300 to-orange-400 inline-block"></span>
+                            </div>
+                            <span class="pill-3d-btn px-3.5 py-1 bg-teal-600 text-white text-[10px] uppercase">Готовые</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Карточка 4: Прогресс (Золотистый закат в горах как на референсе 3) -->
+            <div onclick="openProgressModal()" class="scenic-stat-card cursor-pointer flex flex-col justify-between">
+                <div>
+                    <div class="diorama-viewport bg-gradient-to-b from-[#ffedd8] via-[#f4a261] to-[#264653]">
+                        <svg class="w-full h-full" viewBox="0 0 300 140" preserveAspectRatio="xMidYMid slice">
+                            <circle cx="150" cy="60" r="32" fill="#fff3b0" opacity="0.9"/>
+                            <path d="M55,35 Q62,28 69,34 Q76,28 83,35" stroke="#5c3d2e" stroke-width="1.8" fill="none"/>
+                            <path d="M210,40 Q216,34 222,39 Q228,34 234,40" stroke="#5c3d2e" stroke-width="1.8" fill="none"/>
+                            <path d="M0,105 L85,45 L155,92 L225,38 L300,100 L300,140 L0,140 Z" fill="#bb6b48" opacity="0.85"/>
+                            <path d="M0,122 Q150,85 300,122 L300,140 L0,140 Z" fill="#264653"/>
+                            <circle cx="45" cy="112" r="18" fill="#e76f51"/>
+                            <circle cx="255" cy="110" r="20" fill="#e76f51"/>
+                        </svg>
+                        <span class="absolute top-2.5 right-3 bg-white/90 text-amber-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow">
+                            ANALYTICS
+                        </span>
+                    </div>
+
+                    <div class="px-5 pt-3.5 pb-2">
+                        <div class="flex items-baseline justify-between">
+                            <div>
+                                <p class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Эффективность</p>
+                                <h4 class="font-serif italic text-lg font-bold text-slate-800">Прогресс</h4>
+                            </div>
+                            <span id="statProgress" class="text-3xl font-extrabold text-amber-600">0%</span>
+                        </div>
+                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                            <div class="w-32 bg-slate-200 h-2.5 rounded-full overflow-hidden p-0.5 shadow-inner">
+                                <div id="miniProgressBar" class="bg-gradient-to-r from-amber-400 to-rose-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                            <span class="pill-3d-btn px-3.5 py-1 bg-amber-500 text-white text-[10px] uppercase">График</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =====================================================================
+             ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ: СПИСОК ЗАДАЧ И КАЛЕНДАРЬ
+             ===================================================================== -->
+        <div id="tasksViewContainer" class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow mb-8">
+            
+            <!-- Левая колонка (8/12): Создание задачи и Дерево задач -->
+            <div class="lg:col-span-8 flex flex-col gap-6">
+                
+                <!-- Форма создания задачи -->
+                <div class="glass-panel p-6 rounded-[28px]">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-plus"></i>
+                            </span>
+                            Новая задача в проекте
+                        </h2>
+                        <span id="currentProjectTitleBadge" class="text-[11px] font-bold px-3 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 shadow-sm">...</span>
+                    </div>
+
+                    <form id="taskForm" class="flex flex-col gap-3.5">
+                        <input type="text" id="taskInput" placeholder="Что нужно реализовать? (например: Подготовить презентацию архитектуры...)" required class="glass-input rounded-2xl px-4 py-3 w-full text-slate-800 placeholder-slate-400 text-sm font-medium">
+                        
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex items-center gap-2 glass-input px-3.5 py-2 rounded-2xl">
+                                <span class="text-[10px] font-extrabold text-slate-400 uppercase">Старт:</span>
+                                <input type="date" id="taskDateInput" required class="bg-transparent text-slate-700 focus:outline-none text-xs font-semibold cursor-pointer">
+                                <span class="text-[10px] font-extrabold text-slate-400 uppercase ml-1">Дедлайн:</span>
+                                <input type="date" id="taskEndDateInput" required class="bg-transparent text-slate-700 focus:outline-none text-xs font-semibold cursor-pointer">
+                            </div>
+                            
+                            <select id="taskPriority" class="glass-input rounded-2xl px-3.5 py-2.5 text-slate-700 font-semibold cursor-pointer text-xs">
+                                <option value="low">🟢 Низкий приоритет</option>
+                                <option value="medium" selected>🟡 Средний приоритет</option>
+                                <option value="high">🔴 Высокий приоритет</option>
+                            </select>
+
+                            <div class="flex items-center gap-2 glass-input px-3.5 py-2 rounded-2xl" title="Цвет задачи на таймлайне и в календаре">
+                                <span class="text-[10px] font-extrabold text-slate-400 uppercase">Цвет</span>
+                                <input type="color" id="taskColorInput" value="#e07a5f" class="w-6 h-6 border-0 bg-transparent cursor-pointer rounded-full overflow-hidden">
+                            </div>
+
+                            <button type="submit" class="pill-3d-btn bg-gradient-to-r from-[#e07a5f] to-[#d62828] text-white px-6 py-2.5 text-xs flex items-center justify-center gap-2 ml-auto">
+                                <i class="fa-solid fa-feather-pointed"></i> Добавить задачу
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Дерево задач -->
+                <div class="glass-panel p-6 rounded-[28px] flex-grow flex flex-col">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-5 pb-3 border-b border-slate-200/80">
+                        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-Account-tree fa-sitemap text-orange-500"></i> Многоуровневое дерево задач
+                        </h2>
+                        <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-full text-xs">
+                            <button type="button" onclick="filterByStat('all')" id="filterBtnAll" class="px-3 py-1 rounded-full font-bold bg-white text-slate-800 shadow-sm transition-all">Все</button>
+                            <button type="button" onclick="filterByStat('pending')" id="filterBtnActive" class="px-3 py-1 rounded-full font-semibold text-slate-500 hover:text-slate-800 transition-all">В работе</button>
+                            <button type="button" onclick="filterByStat('completed')" id="filterBtnCompleted" class="px-3 py-1 rounded-full font-semibold text-slate-500 hover:text-slate-800 transition-all">Готовые</button>
+                        </div>
+                    </div>
+
+                    <div id="emptyState" class="hidden flex flex-col items-center justify-center py-14 text-center">
+                        <div class="w-16 h-16 rounded-full bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-400 text-2xl mb-3 shadow-inner">
+                            <i class="fa-solid fa-seedling"></i>
+                        </div>
+                        <h3 class="font-serif italic text-lg font-bold text-slate-700 mb-1">В этом проекте пока тихо...</h3>
+                        <p class="text-xs text-slate-400 max-w-xs">Добавьте первую задачу выше, чтобы запустить рабочий поток.</p>
+                    </div>
+
+                    <div id="taskList" class="space-y-3 flex-grow"></div>
+                </div>
+            </div>
+
+            <!-- Правая колонка (4/12): Календарь и Задачи на выбранную дату -->
+            <div class="lg:col-span-4 flex flex-col gap-6">
+                
+                <!-- Интерактивный календарь -->
+                <div class="glass-panel p-6 rounded-[28px]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-orange-500">Календарь спринтов</p>
+                            <h3 id="calendarMonthTitle" class="font-serif italic text-lg font-bold text-slate-800">Месяц</h3>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" onclick="changeCalendarMonth(-1)" class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-orange-50 text-slate-600 transition-all text-xs shadow-sm">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <button type="button" onclick="changeCalendarMonth(1)" class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-orange-50 text-slate-600 transition-all text-xs shadow-sm">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-7 gap-1 text-center mb-2">
+                        <span class="text-[10px] font-bold text-slate-400">Пн</span>
+                        <span class="text-[10px] font-bold text-slate-400">Вт</span>
+                        <span class="text-[10px] font-bold text-slate-400">Ср</span>
+                        <span class="text-[10px] font-bold text-slate-400">Чт</span>
+                        <span class="text-[10px] font-bold text-slate-400">Пт</span>
+                        <span class="text-[10px] font-bold text-rose-400">Сб</span>
+                        <span class="text-[10px] font-bold text-rose-400">Вс</span>
+                    </div>
+                    <div id="calendarDaysGrid" class="grid grid-cols-7 gap-1.5 text-center"></div>
+                </div>
+
+                <!-- Задачи выбранного дня -->
+                <div class="glass-panel p-6 rounded-[28px] flex-grow flex flex-col">
+                    <div class="flex items-center justify-between mb-3 pb-2.5 border-b border-slate-200/80">
+                        <h4 class="text-xs font-bold text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-day text-orange-500"></i> Задачи на дату
+                        </h4>
+                        <span id="selectedDateBadge" class="text-[10px] bg-orange-100 text-orange-800 font-bold px-2.5 py-0.5 rounded-full">...</span>
+                    </div>
+                    <div id="selectedDateTasksList" class="space-y-2.5 overflow-y-auto max-h-64 flex-grow"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =====================================================================
+             ДИАГРАММА ГАНТА (ТАЙМЛАЙН)
+             ===================================================================== -->
+        <div id="timelineViewContainer" class="glass-panel p-6 rounded-[28px] hidden-el flex-grow mb-8 flex flex-col">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 pb-4 border-b border-slate-200 gap-3">
+                <div>
+                    <h2 class="font-serif italic text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-gantt text-orange-500"></i> Диаграмма Ганта (Таймлайн активных задач)
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">Визуализация длительности задач и подзадач в выбранном проекте.</p>
+                </div>
+                <button onclick="switchTab('tasks')" class="pill-3d-btn px-4 py-2 bg-slate-800 text-white text-xs">
+                    &larr; Вернуться к списку
+                </button>
+            </div>
+            <div class="overflow-x-auto flex-grow pb-4">
+                <div id="ganttChartArea" class="min-w-[800px] flex flex-col"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- =========================================================================
+         5. МОДАЛЬНЫЕ ОКНА (НАСТРОЙКА ЗАДАЧ, ПРОЕКТОВ, ГРАФИК И DOCKER + NODE.JS КОД)
+         ========================================================================= -->
+
+    <!-- Модальное окно создания/редактирования задачи и подзадачи -->
+    <div id="taskActionModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 backdrop-blur-sm hidden-el p-4">
+        <div class="glass-panel p-6 rounded-[28px] max-w-md w-full shadow-2xl border border-white">
+            <h3 class="font-serif italic text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-pen-nib text-orange-500"></i>
+                <span id="modalActionTitleText">Настройка задачи</span>
+            </h3>
+            <form id="modalActionForm" class="space-y-4">
+                <input type="hidden" id="modalTaskId">
+                <input type="hidden" id="modalParentId">
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Название задачи</label>
+                    <input type="text" id="modalTaskName" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-sm font-medium" required>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Дата начала</label>
+                        <input type="date" id="modalTaskStart" class="glass-input w-full rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer" required>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Дата окончания</label>
+                        <input type="date" id="modalTaskEnd" class="glass-input w-full rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer" required>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Приоритет</label>
+                        <select id="modalTaskPriority" class="glass-input w-full rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer">
+                            <option value="low">Низкий</option>
+                            <option value="medium">Средний</option>
+                            <option value="high">Высокий</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Цвет маркера</label>
+                        <input type="color" id="modalTaskColor" class="w-full h-9 p-0 border-0 rounded-xl cursor-pointer" value="#e07a5f">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-200 mt-5">
+                    <button type="button" onclick="closeTaskModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-full transition-all">Отмена</button>
+                    <button type="submit" class="pill-3d-btn px-6 py-2 text-xs bg-gradient-to-r from-[#e07a5f] to-[#d62828] text-white">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления нового проекта (вместо prompt) -->
+    <div id="addCategoryModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 backdrop-blur-sm hidden-el p-4">
+        <div class="glass-panel p-6 rounded-[28px] max-w-sm w-full shadow-2xl border border-white">
+            <h3 class="font-serif italic text-xl font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-folder-plus text-orange-500"></i> Новый проект
+            </h3>
+            <p class="text-xs text-slate-500 mb-4">Создайте новую группу для хакатона, работы или личных счетов.</p>
+            <form id="addCategoryForm" class="space-y-4">
+                <input type="text" id="newCategoryNameInput" placeholder="Например: 🚀 Хакатон AI" required class="glass-input w-full rounded-xl px-3.5 py-2.5 text-sm font-medium">
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeAddCategoryModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-full">Отмена</button>
+                    <button type="submit" class="pill-3d-btn px-5 py-2 text-xs bg-slate-800 text-white">Создать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно подтверждения удаления проекта -->
+    <div id="deleteCategoryModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 backdrop-blur-sm hidden-el p-4">
+        <div class="glass-panel p-6 rounded-[28px] max-w-sm w-full shadow-2xl border border-rose-100 text-center">
+            <div class="w-14 h-14 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center text-2xl mx-auto mb-3 border border-rose-100">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="font-serif italic text-xl font-bold text-slate-800 mb-1">Удалить проект?</h3>
+            <p id="deleteCategoryPromptText" class="text-xs text-slate-500 mb-5">Вы уверены, что хотите удалить этот проект со всеми задачами?</p>
+            <div class="flex justify-center gap-2">
+                <button type="button" onclick="closeDeleteCategoryModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-full">Отмена</button>
+                <button type="button" onclick="executeDeleteCurrentCategory()" class="pill-3d-btn px-5 py-2 text-xs bg-rose-600 text-white">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно прогресса -->
+    <div id="progressModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 backdrop-blur-sm hidden-el p-4">
+        <div class="glass-panel p-6 rounded-[28px] max-w-lg w-full shadow-2xl border border-white">
+            <div class="flex items-center justify-between mb-5 pb-3 border-b border-slate-200">
+                <h3 class="font-serif italic text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-orange-500"></i> Аналитика выполнения
+                </h3>
+                <button onclick="closeProgressModal()" class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="flex flex-col sm:flex-row items-center gap-6 bg-white/75 p-5 rounded-2xl border border-slate-200/80">
+                <div class="relative w-32 h-32 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                        <path class="text-slate-200" stroke-width="3.8" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path id="modalCircleProgress" class="text-orange-500 transition-all duration-1000 ease-out" stroke-dasharray="0, 100" stroke-width="3.8" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                        <span id="modalProgressPercent" class="text-2xl font-extrabold text-slate-800">0%</span>
+                        <span class="text-[10px] text-slate-400 font-bold uppercase">Готово</span>
+                    </div>
+                </div>
+                <div class="flex flex-col justify-center text-center sm:text-left flex-grow">
+                    <h4 class="text-sm font-bold text-slate-800 mb-2">Статистика текущего проекта</h4>
+                    <div class="space-y-2 text-xs font-semibold">
+                        <div class="flex items-center justify-between bg-emerald-50 px-3 py-1.5 rounded-xl text-emerald-800">
+                            <span>Выполнено задач:</span>
+                            <span id="modalDoneCount" class="font-extrabold">0</span>
+                        </div>
+                        <div class="flex items-center justify-between bg-amber-50 px-3 py-1.5 rounded-xl text-amber-800">
+                            <span>В процессе:</span>
+                            <span id="modalPendingCount" class="font-extrabold">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-5 pt-3 border-t border-slate-200 flex justify-end">
+                <button onclick="closeProgressModal()" class="pill-3d-btn bg-slate-800 text-white px-6 py-2 text-xs">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         МОДАЛЬНОЕ ОКНО: DOCKER + NODE.JS + POSTGRESQL BACKEND (КОД И НАСТРОЙКА API)
+         ========================================================================= -->
+    <div id="dockerModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md hidden-el p-4">
+        <div class="glass-panel p-6 rounded-[28px] max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-white">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-sky-500 text-white flex items-center justify-center text-xl shadow-md">
+                        <i class="fa-brands fa-docker"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-extrabold text-slate-800">Архитектура БД на Docker (PostgreSQL) + Node.js API</h3>
+                        <p class="text-xs text-slate-500">Фронтенд уже подключен к API (<code class="text-orange-600 font-bold">http://localhost:3000/api</code>) с авто-резервом в LocalStorage</p>
+                    </div>
+                </div>
+                <button onclick="closeDockerModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Строка подключения API -->
+            <div class="my-3 p-3 rounded-2xl bg-slate-100 border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="font-bold text-slate-700">Endpoint Node.js:</span>
+                    <input type="text" id="apiEndpointInput" value="http://localhost:3000/api" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono text-slate-800 w-56">
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="connectionStatusText" class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800">
+                        ● Гибридный режим (REST API + LocalStorage)
+                    </span>
+                    <button onclick="testBackendConnection()" class="pill-3d-btn px-3.5 py-1 bg-sky-600 text-white text-[11px]">
+                        Проверить связь с Node.js
+                    </button>
+                </div>
+            </div>
+
+            <!-- Вкладки файлов для Docker и Node.js -->
+            <div class="flex items-center gap-2 mb-3 overflow-x-auto pb-1">
+                <button onclick="switchCodeTab('compose')" id="codeTab_compose" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-white">1. docker-compose.yml</button>
+                <button onclick="switchCodeTab('sql')" id="codeTab_sql" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300">2. init.sql (PostgreSQL)</button>
+                <button onclick="switchCodeTab('server')" id="codeTab_server" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300">3. server.js (Node.js + Express)</button>
+                <button onclick="switchCodeTab('package')" id="codeTab_package" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300">4. package.json & Запуск</button>
+            </div>
+
+            <!-- Блок с кодом -->
+            <div class="relative flex-grow overflow-hidden bg-slate-900 rounded-2xl border border-slate-700 flex flex-col">
+                <div class="flex items-center justify-between px-4 py-2 bg-slate-800/90 border-b border-slate-700 text-xs text-slate-300">
+                    <span id="currentCodeFileName" class="font-mono font-bold text-amber-300">docker-compose.yml</span>
+                    <button onclick="copyBackendCode()" class="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold flex items-center gap-1.5 transition-all">
+                        <i class="fa-regular fa-copy"></i> Скопировать файл
+                    </button>
+                </div>
+                <pre id="backendCodeDisplay" class="p-4 text-xs font-mono text-emerald-300 overflow-auto flex-grow leading-relaxed select-all"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         6. КОТ-НИНДЗЯ АССИСТЕНТ (КАСТОМНЫЙ АНИМИРОВАННЫЙ SVG СПРАЙТ)
+         ========================================================================= -->
+    <div id="catAssistantContainer">
+        <div id="catThoughtBubble">
+            <span id="catMessageText">Мур! Проверяем дедлайны и погоду... 🐾</span>
+        </div>
+        <div id="catSpriteWrapper" title="Кот-Ниндзя — Нажмите для проверки горящих дедлайнов!">
+            <svg id="catSvgSprite" class="cat-walking" width="115" height="105" viewBox="0 0 120 110">
+                <!-- Хвост -->
+                <path class="cat-tail" d="M28,72 Q8,55 14,36" stroke="#1e293b" stroke-width="8" stroke-linecap="round" fill="none"/>
+                <!-- Задние и передние лапки -->
+                <rect class="leg-1" x="35" y="78" width="9" height="20" rx="4.5" fill="#0f172a"/>
+                <rect class="leg-2" x="48" y="78" width="9" height="20" rx="4.5" fill="#1e293b"/>
+                <rect class="leg-1" x="68" y="78" width="9" height="20" rx="4.5" fill="#0f172a"/>
+                <rect class="leg-2" x="80" y="78" width="9" height="20" rx="4.5" fill="#1e293b"/>
+                <!-- Туловище -->
+                <ellipse cx="60" cy="68" rx="30" ry="20" fill="#1e293b"/>
+                <!-- Шарфик/повязка ниндзя на шее -->
+                <path d="M52,54 Q68,60 85,53 L80,62 Q65,66 50,59 Z" fill="#e63946"/>
+                <!-- Голова -->
+                <circle cx="76" cy="40" r="21" fill="#1e293b"/>
+                <!-- Ушки -->
+                <polygon points="59,26 62,8 73,21" fill="#1e293b"/>
+                <polygon points="62,23 64,12 71,21" fill="#f4a261"/>
+                <polygon points="81,21 92,8 95,26" fill="#1e293b"/>
+                <polygon points="83,21 90,12 92,23" fill="#f4a261"/>
+                <!-- Красная повязка ниндзя на лбу + развевающиеся ленты -->
+                <path d="M56,33 Q76,27 96,33 L96,39 Q76,33 56,39 Z" fill="#e63946"/>
+                <path d="M56,35 Q40,28 32,36" stroke="#e63946" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+                <path d="M56,38 Q42,40 35,47" stroke="#e63946" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                <!-- Выразительные глаза -->
+                <ellipse cx="70" cy="43" rx="4.2" ry="4.8" fill="#fde047"/>
+                <ellipse cx="71" cy="43" rx="1.8" ry="3.2" fill="#0f172a"/>
+                <circle cx="69.5" cy="41.5" r="1" fill="#ffffff"/>
+                <ellipse cx="85" cy="43" rx="4.2" ry="4.8" fill="#fde047"/>
+                <ellipse cx="86" cy="43" rx="1.8" ry="3.2" fill="#0f172a"/>
+                <circle cx="84.5" cy="41.5" r="1" fill="#ffffff"/>
+                <!-- Носик и усики -->
+                <polygon points="76,48 79,48 77.5,50.5" fill="#f4845f"/>
+                <line x1="92" y1="47" x2="104" y2="45" stroke="#cbd5e1" stroke-width="1.2"/>
+                <line x1="92" y1="50" x2="104" y2="51" stroke="#cbd5e1" stroke-width="1.2"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         7. JAVASCRIPT: КЛИЕНТ NODE.JS API, СЕЗОННЫЙ ДВИЖОК, ПАРАЛЛАКС И ЛОГИКА ПЛАНЕРА
+         ========================================================================= -->
+    <script>
+        /* -------------------------------------------------------------------------
+           БЛОК 1: ГОТОВЫЕ ФАЙЛЫ БЭКЕНДА (DOCKER + POSTGRESQL + NODE.JS EXPRESS)
+           ------------------------------------------------------------------------- */
+        const BACKEND_FILES = {
+            compose: {
+                name: 'docker-compose.yml',
+                content: `version: '3.9'
+
+services:
+  # 1. База данных PostgreSQL в Docker
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: auratask_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: aura_user
+      POSTGRES_PASSWORD: aura_secret_password
+      POSTGRES_DB: auratask_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aura_user -d auratask_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Сервер Node.js + Express API
+  nodejs_api:
+    build: .
+    container_name: auratask_backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://aura_user:aura_secret_password@postgres_db:5432/auratask_db
+      JWT_SECRET: super_secret_aura_jwt_key_2026
+      PORT: 3000
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+
+volumes:
+  pgdata:`
+            },
+            sql: {
+                name: 'init.sql',
+                content: `-- Инициализация таблиц БД AuraTask (PostgreSQL)
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_projects (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    projects_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
+);
+
+-- Тестовый пользователь по умолчанию
+INSERT INTO users (name, email, password_hash)
+VALUES ('Алексей Смирнов', 'alexey@auratask.io', '$2b$10$demoHashValueForAuraTaskUser')
+ON CONFLICT (email) DO NOTHING;`
+            },
+            server: {
+                name: 'server.js',
+                content: `const express = require('express');
+const cors = require('cors');
+const { Pool } = require('pg');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: '5mb' }));
+app.use(express.static('public')); // Раздача нашего фронтенда
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL || 'postgres://aura_user:aura_secret_password@localhost:5432/auratask_db'
+});
+
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_aura_jwt_key_2026';
+
+// Проверка здоровья контейнера
+app.get('/api/health', async (req, res) => {
+    try {
+        await pool.query('SELECT 1');
+        res.json({ status: 'ok', db: 'PostgreSQL Connected in Docker' });
+    } catch (err) {
+        res.status(500).json({ status: 'error', message: err.message });
+    }
+});
+
+// Регистрация / Авторизация пользователя
+app.post('/api/auth/login', async (req, res) => {
+    const { name, email, password, isRegister } = req.body;
+    try {
+        let userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+        let user = userResult.rows[0];
+
+        if (isRegister && !user) {
+            const hash = await bcrypt.hash(password, 10);
+            const insert = await pool.query(
+                'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email',
+                [name || 'Пользователь', email, hash]
+            );
+            user = insert.rows[0];
+        } else if (!user) {
+            return res.status(401).json({ error: 'Пользователь не найден' });
+        }
+
+        const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+        res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Получение всех проектов и дерева задач из PostgreSQL
+app.get('/api/projects', async (req, res) => {
+    const userId = req.query.userId || 1;
+    try {
+        const result = await pool.query('SELECT projects_json FROM user_projects WHERE user_id = $1', [userId]);
+        res.json({ projects: result.rows[0]?.projects_json || null });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Сохранение дерева проектов и задач в PostgreSQL (JSONB)
+app.put('/api/projects', async (req, res) => {
+    const { userId = 1, projects } = req.body;
+    try {
+        await pool.query(
+            \`INSERT INTO user_projects (user_id, projects_json, updated_at)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (user_id) DO UPDATE SET projects_json = $2, updated_at = NOW()\`,
+            [userId, JSON.stringify(projects)]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(\`🚀 AuraTask Node.js Server запущен на порту \${PORT}\`));`
+            },
+            package: {
+                name: 'package.json & Dockerfile',
+                content: `// === package.json ===
+{
+  "name": "auratask-docker-backend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.5"
+  }
+}
+
+# === Dockerfile ===
+# FROM node:20-alpine
+# WORKDIR /app
+# COPY package*.json ./
+# RUN npm install --production
+# COPY . .
+# EXPOSE 3000
+# CMD ["npm", "start"]
+
+# === КОМАНДА ДЛЯ ЗАПУСКА В ТЕРМИНАЛЕ ===
+# docker compose up --build -d`
+            }
+        };
+
+        /* -------------------------------------------------------------------------
+           БЛОК 2: КЛИЕНТСКИЙ СЕРВИС СИНХРОНИЗАЦИИ С NODE.JS + FALLBACK LOCALSTORAGE
+           ------------------------------------------------------------------------- */
+        const AuraApiService = {
+            baseUrl: localStorage.getItem('auratask_api_url') || 'http://localhost:3000/api',
+            isBackendOnline: false,
+
+            async checkHealth() {
+                try {
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), 1800);
+                    const res = await fetch(`${this.baseUrl}/health`, { signal: controller.signal });
+                    clearTimeout(timer);
+                    if (res.ok) {
+                        this.isBackendOnline = true;
+                        return true;
+                    }
+                } catch (e) {
+                    this.isBackendOnline = false;
+                }
+                return false;
+            },
+
+            async syncProjectsToServer(projects) {
+                // Всегда сохраняем локально для мгновенного отклика
+                localStorage.setItem('auratask_projects', JSON.stringify(projects));
+                if (!this.isBackendOnline) return;
+                try {
+                    await fetch(`${this.baseUrl}/projects`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: 1, projects })
+                    });
+                } catch (e) {
+                    this.isBackendOnline = false;
+                }
+            },
+
+            async loadProjectsFromServer() {
+                const online = await this.checkHealth();
+                if (online) {
+                    try {
+                        const res = await fetch(`${this.baseUrl}/projects?userId=1`);
+                        const data = await res.json();
+                        if (data && data.projects && Object.keys(data.projects).length > 0) {
+                            localStorage.setItem('auratask_projects', JSON.stringify(data.projects));
+                            return data.projects;
+                        }
+                    } catch (e) { /* fallback to localStorage */ }
+                }
+                return null;
+            }
+        };
+
+        /* -------------------------------------------------------------------------
+           БЛОК 3: СОСТОЯНИЕ ПРИЛОЖЕНИЯ И ДЕФОЛТНЫЕ ДАННЫЕ
+           ------------------------------------------------------------------------- */
+        const todayIso = new Date().toISOString().split('T')[0];
+        const plusDays = (d) => new Date(Date.now() + 86400000 * d).toISOString().split('T')[0];
+
+        const defaultProjects = {
+            work: {
+                name: '💼 Работа & Архитектура',
+                tasks: [
+                    {
+                        id: 'w_1',
+                        text: 'Развернуть PostgreSQL и Node.js API в Docker-контейнерах',
+                        completed: false,
+                        priority: 'high',
+                        color: '#e07a5f',
+                        date: todayIso,
+                        endDate: plusDays(2),
+                        hidden: false,
+                        subtasks: [
+                            { id: 'w_1_1', text: 'Настроить docker-compose.yml и volume для pgdata', completed: true, priority: 'medium', color: '#2a9d8f', date: todayIso, endDate: plusDays(1), hidden: false, subtasks: [] },
+                            { id: 'w_1_2', text: 'Подключить JWT-авторизацию и JSONB эндпоинты', completed: false, priority: 'high', color: '#e76f51', date: todayIso, endDate: plusDays(2), hidden: false, subtasks: [] }
+                        ]
+                    },
+                    {
+                        id: 'w_2',
+                        text: 'Обновить UI дашборда с многослойным сезонным параллаксом',
+                        completed: true,
+                        priority: 'medium',
+                        color: '#2a9d8f',
+                        date: todayIso,
+                        endDate: plusDays(1),
+                        hidden: false,
+                        subtasks: []
+                    }
+                ]
+            },
+            hackathon: {
+                name: '🏆 Хакатоны',
+                tasks: [
+                    {
+                        id: 'h_1',
+                        text: 'Подготовить питч-дек и интерактивное демо проекта',
+                        completed: false,
+                        priority: 'high',
+                        color: '#f4a261',
+                        date: todayIso,
+                        endDate: plusDays(4),
+                        hidden: false,
+                        subtasks: []
+                    }
+                ]
+            },
+            bills: {
+                name: '🏠 Коммуналка & Счета',
+                tasks: [
+                    {
+                        id: 'b_1',
+                        text: 'Оплатить облачный хостинг, интернет и электроэнергию',
+                        completed: false,
+                        priority: 'medium',
+                        color: '#457b9d',
+                        date: todayIso,
+                        endDate: plusDays(5),
+                        hidden: false,
+                        subtasks: []
+                    }
+                ]
+            }
+        };
+
+        let projectsData = JSON.parse(localStorage.getItem('auratask_projects')) || defaultProjects;
+        let currentCategory = Object.keys(projectsData)[0] || 'work';
+        let currentFilter = 'all';
+        let searchQuery = '';
+        let currentSeasonSetting = localStorage.getItem('auratask_season') || 'auto';
+        let currentTab = 'tasks';
+        let showHiddenPanelState = false;
+        let currentAppMode = 'planner'; // 'auth' или 'planner'
+        let isRegisterMode = true;
+
+        let calendarYear = new Date().getFullYear();
+        let calendarMonth = new Date().getMonth();
+        let selectedDateStr = todayIso;
+
+        /* -------------------------------------------------------------------------
+           БЛОК 4: АВТОМАТИЧЕСКОЕ ОПРЕДЕЛЕНИЕ ВРЕМЕНИ ГОДА И СЕЗОННАЯ АТМОСФЕРА
+           ------------------------------------------------------------------------- */
+        const SEASON_META = {
+            spring: { label: '🌸 Весна', tag: 'SPRING AWAKENING • 2026', title: 'Весеннее пробуждение идей' },
+            summer: { label: '☀️ Лето', tag: 'SUMMER SUNSET • 2026', title: 'Солнечная энергия проектов' },
+            autumn: { label: '🍁 Осень', tag: 'AUTUMN HARMONY • 2026', title: 'Теплая гармония ваших задач' },
+            winter: { label: '❄️ Зима', tag: 'WINTER CLARITY • 2026', title: 'Кристальная чистота планов' }
+        };
+
+        function getAutoSeason() {
+            const month = new Date().getMonth(); // 0 = Янв ... 9 = Окт
+            if (month >= 2 && month <= 4) return 'spring';
+            if (month >= 5 && month <= 7) return 'summer';
+            if (month >= 8 && month <= 10) return 'autumn';
+            return 'winter';
+        }
+
+        function getActiveSeason() {
+            return currentSeasonSetting === 'auto' ? getAutoSeason() : currentSeasonSetting;
+        }
+
+        function updateSeasonTheme() {
+            const season = getActiveSeason();
+            document.body.setAttribute('data-season', season);
+            const meta = SEASON_META[season] || SEASON_META.autumn;
+            
+            const badge = document.getElementById('seasonBadgeHeader');
+            if (badge) badge.textContent = meta.label;
+
+            const authTag = document.getElementById('authSeasonTag');
+            const authTitle = document.getElementById('authArtTitle');
+            if (authTag) authTag.textContent = meta.tag;
+            if (authTitle) authTitle.textContent = meta.title;
+        }
+
+        /* -------------------------------------------------------------------------
+           БЛОК 5: МНОГОСЛОЙНЫЙ 3D-ПАРАЛЛАКС ПРИ ДВИЖЕНИИ МЫШИ + ЧАСТИЦЫ НА CANVAS
+           ------------------------------------------------------------------------- */
+        window.addEventListener('mousemove', (e) => {
+            const xNorm = (e.clientX / window.innerWidth) - 0.5;
+            const yNorm = (e.clientY / window.innerHeight) - 0.5;
+            document.querySelectorAll('.parallax-layer').forEach(layer => {
+                const depth = parseFloat(layer.getAttribute('data-depth') || 0.05);
+                const moveX = -xNorm * depth * 420;
+                const moveY = -yNorm * depth * 220;
+                layer.style.transform = `translate3d(${moveX}px, ${moveY}px, 0)`;
+            });
+        });
+
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas ? canvas.getContext('2d') : null;
+        let particles = [];
+        let streamWave = 0;
+
+        function resizeCanvas() {
+            if (!canvas) return;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class SeasonalParticle {
+            constructor() { this.reset(true); }
+            reset(initial = false) {
+                const season = getActiveSeason();
+                this.x = canvas ? Math.random() * canvas.width : 0;
+                this.y = initial && canvas ? Math.random() * canvas.height : -15;
+                this.size = Math.random() * 6 + 3.5;
+                this.speedY = season === 'spring' ? (Math.random() * 1.6 + 0.8) : (Math.random() * 1.3 + 0.5);
+                this.speedX = (Math.random() - 0.5) * 1.4;
+                this.rotation = Math.random() * 360;
+                this.rotSpeed = (Math.random() - 0.5) * 2.2;
+                this.opacity = Math.random() * 0.55 + 0.35;
+                this.colorVariant = Math.random();
+            }
+            update() {
+                if (!canvas) return;
+                const season = getActiveSeason();
+                streamWave += 0.0008;
+                this.y += this.speedY;
+                this.x += this.speedX + Math.sin(streamWave + this.y * 0.015) * (season === 'autumn' ? 0.9 : 0.5);
+                this.rotation += this.rotSpeed;
+
+                if (this.y > canvas.height + 20 || this.x > canvas.width + 20 || this.x < -20) {
+                    this.reset(false);
+                }
+            }
+            draw() {
+                if (!ctx) return;
+                const season = getActiveSeason();
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate((this.rotation * Math.PI) / 180);
+                ctx.globalAlpha = this.opacity;
+
+                if (season === 'winter') {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.size * 0.55, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (season === 'autumn') {
+                    // Осенние кленовые/дубовые листочки
+                    ctx.fillStyle = this.colorVariant > 0.5 ? '#f77f00' : (this.colorVariant > 0.25 ? '#e63946' : '#fcbf49');
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.size, this.size * 0.55, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (season === 'summer') {
+                    // Летние лепестки и солнечные блики
+                    ctx.fillStyle = this.colorVariant > 0.5 ? '#ffcad4' : '#fde047';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.size * 0.9, this.size * 0.45, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Весенние лепестки сакуры и капли росы
+                    ctx.fillStyle = this.colorVariant > 0.4 ? '#ffb3c6' : '#90e0ef';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.size * 0.8, this.size * 0.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        function initParticles() {
+            if (!canvas) return;
+            particles = Array.from({ length: 42 }, () => new SeasonalParticle());
+        }
+        function animateParticles() {
+            if (ctx && canvas) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => { p.update(); p.draw(); });
+            }
+            requestAnimationFrame(animateParticles);
+        }
+        initParticles();
+        animateParticles();
+
+        /* -------------------------------------------------------------------------
+           БЛОК 6: ТОСТ-УВЕДОМЛЕНИЯ (ВМЕСТО ALERT) И ПЕРЕКЛЮЧЕНИЕ ЭКРАНОВ
+           ------------------------------------------------------------------------- */
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'border-emerald-400 bg-emerald-950/90 text-emerald-100'
+                          : type === 'warning' ? 'border-amber-400 bg-amber-950/90 text-amber-100'
+                          : 'border-white/40 bg-slate-900/90 text-white';
+            toast.className = `px-4 py-3 rounded-2xl border backdrop-blur-md shadow-xl text-xs font-semibold flex items-center gap-2.5 transition-all duration-300 pointer-events-auto ${bgClass}`;
+            toast.innerHTML = `<i class="fa-solid fa-sparkles text-amber-300"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-8px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3400);
+        }
+
+        function switchAppMode(mode) {
+            currentAppMode = mode;
+            const authSec = document.getElementById('authViewSection');
+            const plannerSec = document.getElementById('plannerViewSection');
+            const quickText = document.getElementById('quickSwitchModeText');
+            const navAuth = document.getElementById('navAuthBtn');
+            const navPlanner = document.getElementById('navPlannerBtn');
+
+            if (mode === 'auth') {
+                authSec.classList.remove('hidden-el');
+                plannerSec.classList.add('hidden-el');
+                if (quickText) quickText.textContent = 'Открыть Планер';
+                navAuth?.classList.add('text-amber-300', 'font-bold');
+                navPlanner?.classList.remove('text-amber-300', 'font-bold');
+            } else {
+                authSec.classList.add('hidden-el');
+                plannerSec.classList.remove('hidden-el');
+                if (quickText) quickText.textContent = 'Экран Входа';
+                navPlanner?.classList.add('text-amber-300', 'font-bold');
+                navAuth?.classList.remove('text-amber-300', 'font-bold');
+                renderAll();
+            }
+        }
+
+        function toggleAppMode() {
+            switchAppMode(currentAppMode === 'planner' ? 'auth' : 'planner');
+        }
+
+        function toggleAuthType() {
+            isRegisterMode = !isRegisterMode;
+            document.getElementById('authFormHeading').textContent = isRegisterMode ? 'Sign Up' : 'Log In';
+            document.getElementById('authTogglePrompt').textContent = isRegisterMode ? 'Уже есть аккаунт?' : 'Еще нет аккаунта?';
+            document.getElementById('authToggleBtn').textContent = isRegisterMode ? 'Войти' : 'Регистрация';
+            document.getElementById('authSubmitBtn').innerHTML = isRegisterMode ? 'Sign Up &rarr; Открыть Планер' : 'Log In &rarr; Открыть Планер';
+            document.getElementById('authNameFieldWrap').style.display = isRegisterMode ? 'block' : 'none';
+        }
+
+        function quickDemoLogin(provider = '') {
+            const nameInput = document.getElementById('authNameInput')?.value?.trim();
+            const userName = provider ? `${provider} User` : (nameInput || 'Алексей');
+            document.getElementById('userNameDisplay').textContent = userName;
+            document.getElementById('userAvatarInitial').textContent = userName.charAt(0).toUpperCase();
+            showToast(`Добро пожаловать в AuraTask, ${userName}! Сезон: ${SEASON_META[getActiveSeason()].label}`, 'success');
+            switchAppMode('planner');
+        }
+
+        document.getElementById('authForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('authNameInput').value.trim() || 'Алексей';
+            const email = document.getElementById('authEmailInput').value.trim();
+            const password = document.getElementById('authPasswordInput').value;
+
+            // Попытка авторизации через Node.js контейнер, если он запущен
+            if (AuraApiService.isBackendOnline) {
+                try {
+                    const res = await fetch(`${AuraApiService.baseUrl}/auth/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, email, password, isRegister: isRegisterMode })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        localStorage.setItem('auratask_jwt', data.token);
+                    }
+                } catch (err) { /* fallback */ }
+            }
+            quickDemoLogin();
+        });
+
+        /* -------------------------------------------------------------------------
+           БЛОК 7: УПРАВЛЕНИЕ ПРОЕКТАМИ И ЗАДАЧАМИ
+           ------------------------------------------------------------------------- */
+        function saveProjects() {
+            AuraApiService.syncProjectsToServer(projectsData);
+            renderAll();
+        }
+
+        function getActiveTasks() {
+            return projectsData[currentCategory]?.tasks || [];
+        }
+
+        function openAddCategoryModal() {
+            document.getElementById('newCategoryNameInput').value = '';
+            document.getElementById('addCategoryModal').classList.remove('hidden-el');
+            setTimeout(() => document.getElementById('newCategoryNameInput').focus(), 50);
+        }
+
+        function closeAddCategoryModal() {
+            document.getElementById('addCategoryModal').classList.add('hidden-el');
+        }
+
+        document.getElementById('addCategoryForm')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('newCategoryNameInput').value.trim();
+            if (name) {
+                const key = 'proj_' + Math.random().toString(36).substr(2, 6);
+                projectsData[key] = { name, tasks: [] };
+                currentCategory = key;
+                closeAddCategoryModal();
+                saveProjects();
+                showToast(`Проект «${name}» создан!`, 'success');
+            }
+        });
+
+        function confirmDeleteCurrentCategory() {
+            const categoryKeys = Object.keys(projectsData);
+            if (categoryKeys.length <= 1) {
+                showToast('Невозможно удалить последний оставшийся проект!', 'warning');
+                return;
+            }
+            const projName = projectsData[currentCategory]?.name || 'этот проект';
+            document.getElementById('deleteCategoryPromptText').innerHTML = `Вы уверены, что хотите удалить проект <b>«${projName}»</b> со всеми задачами?`;
+            document.getElementById('deleteCategoryModal').classList.remove('hidden-el');
+        }
+
+        function closeDeleteCategoryModal() {
+            document.getElementById('deleteCategoryModal').classList.add('hidden-el');
+        }
+
+        function executeDeleteCurrentCategory() {
+            const deletedName = projectsData[currentCategory]?.name;
+            delete projectsData[currentCategory];
+            currentCategory = Object.keys(projectsData)[0];
+            closeDeleteCategoryModal();
+            saveProjects();
+            showToast(`Проект «${deletedName}» удален`, 'info');
+        }
+
+        function findTaskAndMutate(taskList, id, callback) {
+            for (let i = 0; i < taskList.length; i++) {
+                if (taskList[i].id === id) return callback(taskList, i);
+                if (taskList[i].subtasks && findTaskAndMutate(taskList[i].subtasks, id, callback)) return true;
+            }
+            return false;
+        }
+
+        function addTask(parentId, text, priority, dateStr, endDateStr, colorHex) {
+            if (!text || text.trim() === '') return;
+            const start = dateStr || todayIso;
+            const end = endDateStr || start;
+            const newTask = {
+                id: 't_' + Math.random().toString(36).substr(2, 9),
+                text: text.trim(),
+                completed: false,
+                priority: priority || 'medium',
+                date: start,
+                endDate: end < start ? start : end,
+                color: colorHex || '#e07a5f',
+                hidden: false,
+                subtasks: []
+            };
+
+            const taskList = getActiveTasks();
+            if (!parentId) {
+                taskList.push(newTask);
+            } else {
+                findTaskAndMutate(taskList, parentId, (list, index) => {
+                    if (!list[index].subtasks) list[index].subtasks = [];
+                    list[index].subtasks.push(newTask);
+                    return true;
+                });
+            }
+            saveProjects();
+            showToast('Задача добавлена в дерево проекта', 'success');
+        }
+
+        function toggleTask(id) {
+            findTaskAndMutate(getActiveTasks(), id, (l, i) => { l[i].completed = !l[i].completed; return true; });
+            saveProjects();
+        }
+
+        function toggleHideTask(id) {
+            findTaskAndMutate(getActiveTasks(), id, (l, i) => { l[i].hidden = !l[i].hidden; return true; });
+            saveProjects();
+        }
+
+        function deleteTask(id) {
+            findTaskAndMutate(getActiveTasks(), id, (l, i) => { l.splice(i, 1); return true; });
+            saveProjects();
+        }
+
+        function openTaskModal(isEdit, taskId, parentId, currentData) {
+            const modal = document.getElementById('taskActionModal');
+            document.getElementById('modalActionTitleText').textContent = isEdit ? 'Редактировать задачу' : (parentId ? 'Новая подзадача' : 'Новая задача');
+            document.getElementById('modalTaskId').value = isEdit ? taskId : '';
+            document.getElementById('modalParentId').value = !isEdit ? (parentId || '') : '';
+            
+            document.getElementById('modalTaskName').value = currentData?.text || '';
+            document.getElementById('modalTaskStart').value = currentData?.date || todayIso;
+            document.getElementById('modalTaskEnd').value = currentData?.endDate || document.getElementById('modalTaskStart').value;
+            document.getElementById('modalTaskPriority').value = currentData?.priority || 'medium';
+            document.getElementById('modalTaskColor').value = currentData?.color || '#e07a5f';
+            
+            modal.classList.remove('hidden-el');
+        }
+
+        function closeTaskModal() {
+            document.getElementById('taskActionModal').classList.add('hidden-el');
+        }
+
+        document.getElementById('modalActionForm')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('modalTaskId').value;
+            const parentId = document.getElementById('modalParentId').value;
+            const text = document.getElementById('modalTaskName').value;
+            const start = document.getElementById('modalTaskStart').value;
+            let end = document.getElementById('modalTaskEnd').value;
+            if (end < start) end = start;
+            const prio = document.getElementById('modalTaskPriority').value;
+            const color = document.getElementById('modalTaskColor').value;
+
+            if (id) {
+                findTaskAndMutate(getActiveTasks(), id, (list, idx) => {
+                    list[idx].text = text;
+                    list[idx].date = start;
+                    list[idx].endDate = end;
+                    list[idx].priority = prio;
+                    list[idx].color = color;
+                    return true;
+                });
+                saveProjects();
+                showToast('Задача обновлена', 'success');
+            } else {
+                addTask(parentId || null, text, prio, start, end, color);
+            }
+            closeTaskModal();
+        });
+
+        /* -------------------------------------------------------------------------
+           БЛОК 8: РЕНДЕРИНГ ДЕРЕВА ЗАДАЧ, КАЛЕНДАРЯ И ТАЙМЛАЙНА
+           ------------------------------------------------------------------------- */
+        function renderTaskNode(task, depth) {
+            if (task.hidden) return '';
+            const badgeColor = task.priority === 'high'
+                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                : task.priority === 'medium'
+                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            const prioStr = task.priority === 'high' ? 'Высокий' : task.priority === 'medium' ? 'Средний' : 'Низкий';
+            const priorityBadge = `<span class="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full ${badgeColor} border">${prioStr}</span>`;
+            const dateBadge = `<span class="text-[10px] text-slate-500 bg-slate-100/90 px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full shadow-sm" style="background-color: ${task.color || '#e07a5f'}"></span>${task.date}${task.endDate && task.endDate !== task.date ? ' &rarr; ' + task.endDate : ''}</span>`;
+            
+            const subtasksHtml = task.subtasks?.length
+                ? `<div class="space-y-2.5 mt-2.5">${task.subtasks.map(s => renderTaskNode(s, depth + 1)).join('')}</div>`
+                : '';
+            const safeText = task.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const safeData = JSON.stringify({
+                id: task.id,
+                text: task.text,
+                date: task.date,
+                endDate: task.endDate,
+                priority: task.priority,
+                color: task.color
+            }).replace(/"/g, '&quot;');
+
+            return `
+                <div class="task-node ${depth > 0 ? 'ml-5 sm:ml-7 mt-2 border-l-2 border-orange-200/80 pl-3.5 sm:pl-4' : ''}">
+                    <div class="task-card-3d p-4 rounded-2xl flex items-center justify-between gap-3 group">
+                        <div class="flex items-center gap-3.5 flex-grow min-w-0">
+                            <button type="button" onclick="toggleTask('${task.id}')" class="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${task.completed ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md' : 'border-2 border-slate-300 hover:border-orange-500 bg-white'}">
+                                ${task.completed ? '<i class="fa-solid fa-check text-[11px] font-bold"></i>' : ''}
+                            </button>
+                            <span class="text-xs sm:text-sm text-slate-800 font-semibold flex-grow truncate ${task.completed ? 'line-through text-slate-400' : ''}">${safeText}</span>
+                            <div class="hidden md:flex items-center gap-2 flex-shrink-0">${dateBadge}${priorityBadge}</div>
+                        </div>
+                        <div class="flex items-center gap-1 opacity-95 sm:opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                            <button type="button" onclick="openTaskModal(false, null, '${task.id}')" title="Добавить подзадачу" class="w-7 h-7 rounded-full hover:bg-orange-50 text-slate-400 hover:text-orange-600 flex items-center justify-center"><i class="fa-solid fa-plus text-xs"></i></button>
+                            <button type="button" onclick="openTaskModal(true, '${task.id}', null, ${safeData})" title="Редактировать" class="w-7 h-7 rounded-full hover:bg-sky-50 text-slate-400 hover:text-sky-600 flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <button type="button" onclick="toggleHideTask('${task.id}')" title="В архив" class="w-7 h-7 rounded-full hover:bg-amber-50 text-slate-400 hover:text-amber-600 flex items-center justify-center"><i class="fa-solid fa-box-archive text-xs"></i></button>
+                            <button type="button" onclick="deleteTask('${task.id}')" title="Удалить" class="w-7 h-7 rounded-full hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </div>
+                    </div>
+                    ${subtasksHtml}
+                </div>`;
+        }
+
+        function renderTimeline() {
+            const container = document.getElementById('ganttChartArea');
+            if (!container) return;
+            
+            let flatList = [];
+            function flatten(items, parentName = '') {
+                items.forEach(item => {
+                    if (!item.hidden && !item.completed) {
+                        flatList.push({ ...item, parentName });
+                        if (item.subtasks) flatten(item.subtasks, item.text);
+                    }
+                });
+            }
+            flatten(getActiveTasks());
+
+            if (flatList.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-12">Нет активных задач для построения диаграммы Ганта</p>';
+                return;
+            }
+
+            let allTimes = flatList.flatMap(t => [new Date(t.date).getTime(), new Date(t.endDate || t.date).getTime()]);
+            let minTime = Math.min(...allTimes);
+            let maxTime = Math.max(...allTimes);
+            if (maxTime - minTime < 86400000 * 5) {
+                maxTime += 86400000 * 6;
+                minTime -= 86400000 * 2;
+            } else {
+                minTime -= 86400000 * 2;
+                maxTime += 86400000 * 2;
+            }
+            const totalSpan = maxTime - minTime;
+
+            let ticksHtml = '', dateAxisLineHtml = '';
+            for (let i = 0; i <= 6; i++) {
+                let pct = (i / 6) * 100;
+                ticksHtml += `<span class="absolute transform -translate-x-1/2 text-[10px] text-slate-500 font-bold" style="left: ${pct}%;">${new Date(minTime + (totalSpan / 6) * i).toISOString().split('T')[0]}</span>`;
+                dateAxisLineHtml += `<div class="absolute top-0 bottom-0 border-r border-slate-200/70 pointer-events-none" style="left: ${pct}%;"></div>`;
+            }
+
+            let html = `<div class="relative h-7 border-b border-slate-200 mb-4 px-2">${ticksHtml}</div><div class="relative space-y-3 flex-grow pb-2">${dateAxisLineHtml}`;
+
+            flatList.forEach(item => {
+                let leftPercent = Math.max(0, Math.min(94, ((new Date(item.date).getTime() - minTime) / totalSpan) * 100));
+                let rightPercent = Math.max(6, Math.min(100, ((new Date(item.endDate || item.date).getTime() - minTime) / totalSpan) * 100));
+                let widthPercent = Math.max(5, rightPercent - leftPercent);
+                let barColor = item.color || '#e07a5f';
+
+                html += `
+                    <div class="task-card-3d p-3.5 rounded-2xl grid grid-cols-12 items-center gap-4 relative z-10">
+                        <div class="col-span-12 sm:col-span-4 flex flex-col min-w-0 pr-2">
+                            <span class="text-xs font-bold text-slate-800 truncate">${item.parentName ? '↳ ' : ''}${item.text}</span>
+                            <span class="text-[10px] font-semibold mt-0.5" style="color: ${barColor}">${item.date} &rarr; ${item.endDate || item.date}</span>
+                        </div>
+                        <div class="col-span-12 sm:col-span-8 relative">
+                            <div class="w-full bg-slate-100 rounded-full h-5 relative overflow-hidden shadow-inner">
+                                <div class="absolute h-full rounded-full transition-all duration-500 shadow flex items-center px-2.5" style="background-color: ${barColor}; left: ${leftPercent}%; width: ${widthPercent}%;">
+                                    <span class="text-[9px] text-white font-bold truncate">${item.text}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            container.innerHTML = html + `</div>`;
+        }
+
+        function renderCalendar() {
+            const totalDays = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+            const startIndex = (new Date(calendarYear, calendarMonth, 1).getDay() + 6) % 7;
+            const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+            document.getElementById('calendarMonthTitle').innerText = `${monthNames[calendarMonth]} ${calendarYear}`;
+            
+            let taskSpans = [];
+            function collectSpans(items) {
+                items.forEach(i => {
+                    if (i.date && !i.hidden) taskSpans.push({ ...i, s: new Date(i.date), e: new Date(i.endDate || i.date) });
+                    if (i.subtasks) collectSpans(i.subtasks);
+                });
+            }
+            collectSpans(getActiveTasks());
+
+            let html = Array(startIndex).fill('<div></div>').join('');
+            for (let day = 1; day <= totalDays; day++) {
+                const dStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const cDate = new Date(dStr);
+                const spans = taskSpans.filter(ts => cDate >= new Date(ts.s.toDateString()) && cDate <= new Date(ts.e.toDateString()));
+                const isSelected = selectedDateStr === dStr;
+                
+                let classes = `h-9 mx-auto rounded-xl flex flex-col items-center justify-center text-xs transition-all relative w-full ${
+                    isSelected
+                        ? 'bg-gradient-to-br from-[#e07a5f] to-[#d62828] text-white font-bold shadow-md scale-105 z-20'
+                        : spans.length
+                        ? 'bg-orange-50/90 text-orange-900 font-bold hover:bg-orange-100'
+                        : 'text-slate-600 hover:bg-slate-100'
+                }`;
+                let indicator = '';
+                if (spans.length && !isSelected) {
+                    const domColor = spans[0].color || '#e07a5f';
+                    indicator = `<div class="w-4/5 mt-0.5 flex items-center justify-center"><div class="h-1 w-full rounded-full" style="background-color: ${domColor}"></div></div>`;
+                }
+                html += `<button type="button" onclick="selectDate('${dStr}')" class="${classes}"><span>${day}</span>${indicator}</button>`;
+            }
+            document.getElementById('calendarDaysGrid').innerHTML = html;
+            renderSelectedDateTasks();
+        }
+
+        function renderSelectedDateTasks() {
+            document.getElementById('selectedDateBadge').textContent = selectedDateStr;
+            const targetDate = new Date(selectedDateStr);
+            let matched = [];
+            function find(items) {
+                items.forEach(i => {
+                    if (!i.hidden && targetDate >= new Date(new Date(i.date).toDateString()) && targetDate <= new Date(new Date(i.endDate || i.date).toDateString())) {
+                        matched.push(i);
+                    }
+                    if (i.subtasks) find(i.subtasks);
+                });
+            }
+            find(getActiveTasks());
+            
+            document.getElementById('selectedDateTasksList').innerHTML = matched.length
+                ? matched.map(i => `
+                    <div class="task-card-3d p-3 rounded-xl flex items-center justify-between gap-2 text-xs border-l-4" style="border-left-color: ${i.color || '#e07a5f'}">
+                        <span class="text-slate-700 font-semibold truncate ${i.completed ? 'line-through text-slate-400' : ''}">${i.text}</span>
+                        <span class="text-[10px] text-slate-400 font-medium flex-shrink-0">${i.completed ? '✓' : '•'}</span>
+                    </div>`).join('')
+                : '<p class="text-xs text-slate-400 text-center py-8">На выбранную дату активных задач нет</p>';
+        }
+
+        function changeCalendarMonth(dir) {
+            calendarMonth += dir;
+            if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+            else if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+            renderCalendar();
+        }
+
+        function selectDate(d) { selectedDateStr = d; renderCalendar(); }
+
+        function switchTab(t) {
+            currentTab = t;
+            document.getElementById('tasksViewContainer').classList.toggle('hidden-el', t !== 'tasks');
+            document.getElementById('timelineViewContainer').classList.toggle('hidden-el', t !== 'timeline');
+            
+            const btnTasks = document.getElementById('tabTasksBtn');
+            const btnTime = document.getElementById('tabTimelineBtn');
+            if (t === 'tasks') {
+                btnTasks.className = 'px-4 py-1.5 rounded-full text-xs font-bold bg-slate-800 text-white transition-all shadow';
+                btnTime.className = 'px-4 py-1.5 rounded-full text-xs font-bold text-slate-600 hover:text-slate-900 transition-all';
+            } else {
+                btnTime.className = 'px-4 py-1.5 rounded-full text-xs font-bold bg-slate-800 text-white transition-all shadow';
+                btnTasks.className = 'px-4 py-1.5 rounded-full text-xs font-bold text-slate-600 hover:text-slate-900 transition-all';
+            }
+            renderAll();
+        }
+
+        function switchCategory(k) { currentCategory = k; renderAll(); }
+
+        function filterByStat(f) {
+            currentFilter = f === 'pending' ? 'active' : f;
+            document.getElementById('filterBtnAll').className = currentFilter === 'all' ? 'px-3 py-1 rounded-full font-bold bg-white text-slate-800 shadow-sm transition-all' : 'px-3 py-1 rounded-full font-semibold text-slate-500 hover:text-slate-800 transition-all';
+            document.getElementById('filterBtnActive').className = currentFilter === 'active' ? 'px-3 py-1 rounded-full font-bold bg-white text-slate-800 shadow-sm transition-all' : 'px-3 py-1 rounded-full font-semibold text-slate-500 hover:text-slate-800 transition-all';
+            document.getElementById('filterBtnCompleted').className = currentFilter === 'completed' ? 'px-3 py-1 rounded-full font-bold bg-white text-slate-800 shadow-sm transition-all' : 'px-3 py-1 rounded-full font-semibold text-slate-500 hover:text-slate-800 transition-all';
+            if (currentTab !== 'tasks') switchTab('tasks');
+            else renderAll();
+        }
+
+        function openProgressModal() { document.getElementById('progressModal').classList.remove('hidden-el'); }
+        function closeProgressModal() { document.getElementById('progressModal').classList.add('hidden-el'); }
+
+        function toggleHiddenPanel() {
+            showHiddenPanelState = !showHiddenPanelState;
+            document.getElementById('hiddenPanel').classList.toggle('hidden-el', !showHiddenPanelState);
+            if (showHiddenPanelState) renderHiddenTasks();
+        }
+
+        function renderHiddenTasks() {
+            let hid = [];
+            function col(it) { it.forEach(i => { if (i.hidden) hid.push(i); if (i.subtasks) col(i.subtasks); }); }
+            col(getActiveTasks());
+            document.getElementById('hiddenTasksList').innerHTML = hid.length
+                ? hid.map(i => `<div class="task-card-3d p-2.5 rounded-xl flex items-center justify-between text-xs"><span class="truncate font-medium">${i.text}</span><button onclick="toggleHideTask('${i.id}')" class="text-orange-600 font-bold hover:underline">Вернуть</button></div>`).join('')
+                : '<p class="text-xs text-center py-2 text-slate-400">Архив пуст</p>';
+        }
+
+        function renderAll() {
+            // Вкладки проектов
+            document.getElementById('categoryTabs').innerHTML = Object.keys(projectsData).map(k => `
+                <button onclick="switchCategory('${k}')" class="${
+                    k === currentCategory
+                        ? 'pill-3d-btn bg-slate-800 text-white px-4 py-1.5 text-xs'
+                        : 'bg-white/80 hover:bg-white text-slate-700 px-4 py-1.5 rounded-full text-xs font-bold border border-slate-200/80 transition-all shadow-sm'
+                }">${projectsData[k].name}</button>
+            `).join('');
+
+            document.getElementById('currentProjectTitleBadge').innerText = projectsData[currentCategory]?.name || '';
+            
+            let activeTasks = getActiveTasks();
+            let filtered = activeTasks;
+            if (currentFilter === 'active') filtered = activeTasks.filter(t => !t.completed);
+            else if (currentFilter === 'completed') filtered = activeTasks.filter(t => t.completed);
+            
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                const fReq = (list) => list.filter(i => {
+                    const m = i.text.toLowerCase().includes(q);
+                    if (i.subtasks) {
+                        i.subtasks = fReq(i.subtasks);
+                        if (i.subtasks.length) return true;
+                    }
+                    return m;
+                });
+                filtered = fReq(JSON.parse(JSON.stringify(filtered)));
+            }
+            
+            document.getElementById('taskList').innerHTML = filtered.length ? filtered.map(t => renderTaskNode(t, 0)).join('') : '';
+            document.getElementById('emptyState').classList.toggle('hidden', filtered.length > 0);
+            
+            // Подсчет статистики и скрытых задач
+            let tot = 0, cmp = 0, hiddenCount = 0;
+            const calc = (it) => it.forEach(i => {
+                if (i.hidden) hiddenCount++;
+                else {
+                    tot++;
+                    if (i.completed) cmp++;
+                }
+                if (i.subtasks) calc(i.subtasks);
+            });
+            calc(activeTasks);
+
+            const badge = document.getElementById('hiddenCountBadge');
+            if (badge) {
+                badge.textContent = hiddenCount;
+                badge.classList.toggle('hidden', hiddenCount === 0);
+            }
+
+            document.getElementById('statTotal').innerText = tot;
+            document.getElementById('statCompleted').innerText = cmp;
+            document.getElementById('statPending').innerText = tot - cmp;
+            const pct = tot ? Math.round((cmp / tot) * 100) : 0;
+            document.getElementById('statProgress').innerText = pct + '%';
+            document.getElementById('miniProgressBar').style.width = pct + '%';
+
+            document.getElementById('modalProgressPercent').innerText = pct + '%';
+            document.getElementById('modalDoneCount').innerText = cmp;
+            document.getElementById('modalPendingCount').innerText = tot - cmp;
+            document.getElementById('modalCircleProgress').setAttribute('stroke-dasharray', `${pct}, 100`);
+
+            renderCalendar();
+            if (currentTab === 'timeline') renderTimeline();
+            if (showHiddenPanelState) renderHiddenTasks();
+        }
+
+        /* -------------------------------------------------------------------------
+           БЛОК 9: МОДАЛЬНОЕ ОКНО DOCKER + NODE.JS BACKEND
+           ------------------------------------------------------------------------- */
+        let currentCodeTabKey = 'compose';
+
+        function openDockerModal() {
+            document.getElementById('dockerModal').classList.remove('hidden-el');
+            switchCodeTab(currentCodeTabKey);
+        }
+
+        function closeDockerModal() {
+            document.getElementById('dockerModal').classList.add('hidden-el');
+        }
+
+        function switchCodeTab(key) {
+            currentCodeTabKey = key;
+            ['compose', 'sql', 'server', 'package'].forEach(k => {
+                const btn = document.getElementById('codeTab_' + k);
+                if (btn) {
+                    btn.className = k === key
+                        ? 'px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-white shadow'
+                        : 'px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300';
+                }
+            });
+            const fileObj = BACKEND_FILES[key];
+            document.getElementById('currentCodeFileName').textContent = fileObj.name;
+            document.getElementById('backendCodeDisplay').textContent = fileObj.content;
+        }
+
+        function copyBackendCode() {
+            const text = BACKEND_FILES[currentCodeTabKey].content;
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            textarea.remove();
+            showToast(`Файл ${BACKEND_FILES[currentCodeTabKey].name} скопирован в буфер обмена!`, 'success');
+        }
+
+        async function testBackendConnection() {
+            const inputUrl = document.getElementById('apiEndpointInput').value.trim();
+            AuraApiService.baseUrl = inputUrl;
+            localStorage.setItem('auratask_api_url', inputUrl);
+            const statusEl = document.getElementById('connectionStatusText');
+            statusEl.textContent = '⏳ Проверка контейнера Node.js...';
+            
+            const ok = await AuraApiService.checkHealth();
+            if (ok) {
+                statusEl.className = 'text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800';
+                statusEl.textContent = '● Подключено к Docker PostgreSQL + Node.js!';
+                showToast('Успешное соединение с сервером Node.js и БД PostgreSQL!', 'success');
+                await AuraApiService.syncProjectsToServer(projectsData);
+            } else {
+                statusEl.className = 'text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800';
+                statusEl.textContent = '● Локальный режим (Запустите docker compose up)';
+                showToast('Контейнер на localhost:3000 пока не запущен — работает авто-сохранение в браузере.', 'info');
+            }
+        }
+
+        /* -------------------------------------------------------------------------
+           БЛОК 10: ПОВЕДЕНИЕ КОТА-НИНДЗЯ (ДВИЖЕНИЕ И УВЕДОМЛЕНИЯ О ДЕДЛАЙНАХ)
+           ------------------------------------------------------------------------- */
+        function initCatBehavior() {
+            const container = document.getElementById('catAssistantContainer');
+            const msgEl = document.getElementById('catMessageText');
+            const svgSprite = document.getElementById('catSvgSprite');
+            if (!container || !msgEl || !svgSprite) return;
+
+            let xPos = 40;
+            let direction = 1;
+            let isSitting = false;
+            let speed = 75;
+            let lastTime = performance.now();
+
+            function animateCat(time) {
+                const dt = (time - lastTime) / 1000;
+                lastTime = time;
+
+                if (!isSitting) {
+                    xPos += speed * direction * dt;
+                    const maxW = window.innerWidth - 130;
+                    if (xPos >= maxW) {
+                        xPos = maxW;
+                        direction = -1;
+                        svgSprite.style.transform = 'scaleX(-1)';
+                    } else if (xPos <= 15) {
+                        xPos = 15;
+                        direction = 1;
+                        svgSprite.style.transform = 'scaleX(1)';
+                    }
+                    container.style.transform = `translate3d(${xPos}px, 0, 0)`;
+                }
+                requestAnimationFrame(animateCat);
+            }
+            requestAnimationFrame(animateCat);
+
+            function checkUrgentTasks() {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                let urgentTasks = [];
+                const collect = (tasks) => tasks.forEach(t => {
+                    if (!t.completed && !t.hidden && t.endDate) {
+                        const diffDays = Math.ceil((new Date(t.endDate).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                        if (diffDays <= 2) urgentTasks.push(t);
+                    }
+                    if (t.subtasks) collect(t.subtasks);
+                });
+                Object.values(projectsData).forEach(p => collect(p.tasks || []));
+
+                if (urgentTasks.length > 0) {
+                    const randomTask = urgentTasks[Math.floor(Math.random() * urgentTasks.length)];
+                    msgEl.innerHTML = `<b>Мур-ниндзя!</b> Дедлайн задачи <i>«${randomTask.text}»</i> уже близко! 🐾`;
+                    isSitting = true;
+                    svgSprite.classList.remove('cat-walking');
+                    setTimeout(() => {
+                        isSitting = false;
+                        svgSprite.classList.add('cat-walking');
+                    }, 5500);
+                } else {
+                    const seasonPhrases = {
+                        autumn: 'Шуршу осенними листьями... Все задачи под контролем! 🍁',
+                        spring: 'Весенний ручеёк журчит, дедлайны в полном порядке! 🌸',
+                        summer: 'Ловлю солнечные лучи и бабочек! Горящих задач нет ☀️',
+                        winter: 'Снежинки кружатся, все спринты идут по плану! ❄️'
+                    };
+                    msgEl.textContent = seasonPhrases[getActiveSeason()] || 'Мур! Все под контролем!';
+                }
+            }
+
+            setTimeout(checkUrgentTasks, 2000);
+            setInterval(checkUrgentTasks, 16000);
+
+            document.getElementById('catSpriteWrapper').onclick = () => {
+                checkUrgentTasks();
+                isSitting = true;
+                svgSprite.classList.remove('cat-walking');
+                setTimeout(() => {
+                    isSitting = false;
+                    svgSprite.classList.add('cat-walking');
+                }, 4000);
+            };
+        }
+
+        /* -------------------------------------------------------------------------
+           БЛОК 11: ИНИЦИАЛИЗАЦИЯ СОБЫТИЙ ПРИ ЗАГРУЗКЕ
+           ------------------------------------------------------------------------- */
+        document.getElementById('taskForm')?.addEventListener('submit', e => {
+            e.preventDefault();
+            addTask(
+                null,
+                document.getElementById('taskInput').value,
+                document.getElementById('taskPriority').value,
+                document.getElementById('taskDateInput').value,
+                document.getElementById('taskEndDateInput').value,
+                document.getElementById('taskColorInput').value
+            );
+            e.target.reset();
+            document.getElementById('taskDateInput').value = todayIso;
+            document.getElementById('taskEndDateInput').value = todayIso;
+            document.getElementById('taskColorInput').value = '#e07a5f';
+        });
+
+        document.getElementById('searchInput')?.addEventListener('input', e => {
+            searchQuery = e.target.value;
+            renderAll();
+        });
+
+        document.getElementById('seasonSelect')?.addEventListener('change', e => {
+            currentSeasonSetting = e.target.value;
+            localStorage.setItem('auratask_season', currentSeasonSetting);
+            updateSeasonTheme();
+            initParticles();
+            showToast(`Тема сезона: ${SEASON_META[getActiveSeason()].label}`, 'info');
+        });
+
+        document.getElementById('clearCompletedBtn')?.addEventListener('click', () => {
+            projectsData[currentCategory].tasks = projectsData[currentCategory].tasks.filter(t => !t.completed);
+            saveProjects();
+            showToast('Выполненные задачи очищены', 'info');
+        });
+
+        window.onload = async () => {
+            document.getElementById('taskDateInput').value = todayIso;
+            document.getElementById('taskEndDateInput').value = todayIso;
+            document.getElementById('seasonSelect').value = currentSeasonSetting;
+            updateSeasonTheme();
+            renderAll();
+            initCatBehavior();
+
+            // Проверяем, запущен ли локально Docker-контейнер с Node.js + PostgreSQL
+            const serverProjects = await AuraApiService.loadProjectsFromServer();
+            if (serverProjects) {
+                projectsData = serverProjects;
+                renderAll();
+            }
+        };
+    </script>
+</body>
+</html>
