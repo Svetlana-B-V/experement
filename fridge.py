@@ -48,7 +48,7 @@ def find(items, needle):
 
     return result
 
-#
+# Функция
 def get_amount(items, needle):
     
     product_amount = Decimal('0')
