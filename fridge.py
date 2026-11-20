@@ -1,7 +1,7 @@
 import datetime
 from decimal import Decimal
 
-DATE_FORMAT = '%Y-%m-%d'
+DATE_FORMAT = '%Y-%m -%d'
 
 def add(items, title, amount, expiration_date=None):
 
